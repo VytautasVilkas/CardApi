@@ -1,0 +1,18 @@
+﻿
+{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://localhost:7279;http://localhost:5130",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "JWL_SECRET_CODE": "Your32ByteSecureKeyWithExactLength!",
+        "ADMIN_SECRET_CODE":"Vilkas"
+      }
+    }
+  }
+}

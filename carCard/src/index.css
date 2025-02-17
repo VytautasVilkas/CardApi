@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Reset margin and padding */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Ensure consistent box-sizing */
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+/* Optional: Set default font for your app */
+body {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  background-color: #ffffff; /* Optional global background */
+  color: #333; /* Optional global text color */
+}
