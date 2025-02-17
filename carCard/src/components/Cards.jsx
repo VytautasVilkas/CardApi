@@ -36,7 +36,6 @@ const Cards = ({ refreshCards, fuelTypes }) => {
       return;
     }
     try {
-      console.log(card);
       const response = await updateCard(card);
       alert(response.message || "Kortelė atnaujinta sėkmingai!");
     } catch (err) {
@@ -76,7 +75,7 @@ const Cards = ({ refreshCards, fuelTypes }) => {
         <table className="w-full border-collapse border border-gray-300 text-xs sm:text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="border border-gray-300 p-2 whitespace-nowrap">
+              <th className="border border-gray-300 p-2 whitespace-nowrap min-w-[200px]">
                 Kortelės numeris
               </th>
               <th className="border border-gray-300 p-2 whitespace-nowrap">

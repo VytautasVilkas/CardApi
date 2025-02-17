@@ -28,51 +28,45 @@ namespace carCard.Controllers
         [Authorize]
         public IActionResult AddCar([FromBody] AddCarRequest car)
         {
-            var currentUserId = User?.FindFirst("USERID")?.Value;
-            if (!_adminService.IsAdmin( currentUserId ))
+            var currentUserId = User.FindFirst("USERID")?.Value;
+            if (!_adminService.IsAdmin(currentUserId))
             {
-            return Unauthorized(new { message = "Jūs neturite teisių atlikti šią operaciją." });
+                return Unauthorized(new { message = "Jūs neturite teisių atlikti šią operaciją." });
             }
             try
             {
                 using (var connection = _connectionProvider.GetConnection())
                 {
                     connection.Open();
-                    var CheckIfCArEgsist = @"
 
+                    // Check if car with this plate already exists.
+                    var checkQuery = @"
                         SELECT COUNT(*) 
                         FROM CARS 
                         WHERE CAR_PLATE_NUMBER COLLATE Latin1_General_CI_AI = @CarPlateNumber;
                     ";
-                        using (var command = new SqlCommand(CheckIfCArEgsist, connection))
-                        {
-                            command.Parameters.AddWithValue("@CarPlateNumber", car.carPlateNumber);
-                            int count = Convert.ToInt32(command.ExecuteScalar());
-                            if (count > 0)
-                            {
-                                return BadRequest(new { message = "Toks automobilis jau įvestas į sistemą" });
-                            }
-                        }
-
-                    
-                    using (var command = new SqlCommand(CheckIfCArEgsist, connection))
+                    using (var command = new SqlCommand(checkQuery, connection))
                     {
                         command.Parameters.AddWithValue("@CarPlateNumber", car.carPlateNumber);
-                        var Count = command.ExecuteNonQuery();
-                        if(Count > 0){
-                                return BadRequest(new { message = "Toks automobilis jau ivestas į sistemą" });
+                        int count = Convert.ToInt32(command.ExecuteScalar());
+                        if (count > 0)
+                        {
+                            return BadRequest(new { message = "Toks automobilis jau įvestas į sistemą" });
                         }
                     }
+
                     var query = @"
-                        INSERT INTO CARS (CAR_PLATE_NUMBER, CAR_INITIAL_ODO, CAR_USER, CAR_FCA_ID,CAR_USAGE_START_DATE,CAR_CLI_ID)
-                        VALUES (@CarPlateNumber, @InitialOdo, @UserId, @CardId,@Date,@CAR_CLI_ID)";
-                    
+                        INSERT INTO CARS (CAR_PLATE_NUMBER, CAR_INITIAL_ODO, CAR_USER, CAR_FCA_ID, CAR_USAGE_START_DATE, CAR_CLI_ID)
+                        VALUES (@CarPlateNumber, @InitialOdo, @UserId, @CardId, @Date, @CAR_CLI_ID)
+                    ";
                     using (var command = new SqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@CarPlateNumber", car.carPlateNumber);
                         command.Parameters.AddWithValue("@InitialOdo", car.initialOdo);
-                        command.Parameters.AddWithValue("@UserId", car.userId);
-                        command.Parameters.AddWithValue("@CardId", car.cardId);
+                        command.Parameters.AddWithValue("@UserId", 
+                        !car.userId.HasValue || car.userId.Value == Guid.Empty ? (object)DBNull.Value : car.userId.Value);
+                        command.Parameters.AddWithValue("@CardId", 
+                        car.cardId.HasValue ? (object)car.cardId.Value : DBNull.Value);
                         command.Parameters.AddWithValue("@CAR_CLI_ID", car.CLI_ID);
                         command.Parameters.AddWithValue("@Date", DateTime.UtcNow);
                         command.ExecuteNonQuery();
@@ -88,13 +82,56 @@ namespace carCard.Controllers
                     message: ex.Message,
                     stackTrace: ex.StackTrace
                 );
-                return StatusCode(StatusCodes.Status500InternalServerError, 
+                return StatusCode(StatusCodes.Status500InternalServerError,
                     new { message = "Nepavyko pridėti automobilio. Bandykite dar kartą." });
             }
         }
+        [HttpPost("DeleteCar")]
+        [Authorize]
+        public IActionResult DeleteCar([FromBody] DeleteCarRequest car)
+        {
+                var currentUserId = User.FindFirst("USERID")?.Value;
+            if (!_adminService.IsAdmin(currentUserId))
+            {
+                return Unauthorized(new { message = "Jūs neturite teisių atlikti šią operaciją." });
+            }
+            try
+            {
+                using (var connection = _connectionProvider.GetConnection())
+                {
+                    connection.Open();
+                    
+
+                    var query = @"
+                        DELETE CARS WHERE CAR_ID = @car
+                    ";
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@car", car.CAR_ID );
+                        command.ExecuteNonQuery();
+                    }
+                }
+
+                return Ok(new { message = "Automobilis sėkmingai Ištrintas" });
+            }
+            catch (Exception ex)
+            {
+                _exceptionLogger.LogException(
+                    source: "DeleteCar",
+                    message: ex.Message,
+                    stackTrace: ex.StackTrace
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { message = "Nepavyko pridėti automobilio. Bandykite dar kartą." });
+            }
+
+
+
+
+        }
         [HttpGet("getCars")]
         [Authorize]
-        public IActionResult GetCarsUsage([FromQuery] string CLI_ID)
+        public IActionResult GetCarsUsage([FromQuery] string CLI_ID, [FromQuery] string search = "")
         {
             var UserID = User?.FindFirst("USERID")?.Value;
             if (!_adminService.IsAdmin(UserID))
@@ -104,26 +141,40 @@ namespace carCard.Controllers
             
             try
             {
-            var dataTable = new DataTable();
-            using (var connection = _connectionProvider.GetConnection())
-            {
-                connection.Open();
-                var query = "SELECT CAR_ID, CAR_PLATE_NUMBER FROM CARS WHERE CAR_CLI_ID = @CLI_ID";
-                using (var command = new SqlCommand(query, connection))
+                var dataTable = new DataTable();
+                using (var connection = _connectionProvider.GetConnection())
                 {
-                    if (Guid.TryParse(CLI_ID, out Guid parsedCliId))
-                            {
-                            command.Parameters.AddWithValue("@CLI_ID", parsedCliId);
-                            }
-                          
-                    using (var adapter = new SqlDataAdapter(command))
+                    connection.Open();
+                    // Build base query.
+                    var query = "SELECT CAR_ID, CAR_PLATE_NUMBER FROM CARS WHERE CAR_CLI_ID = @CLI_ID";
+                    
+                    // Append additional condition if search is provided.
+                    if (!string.IsNullOrEmpty(search))
                     {
-                        adapter.Fill(dataTable);
+                        query += " AND CAR_PLATE_NUMBER LIKE '%' + @search + '%'";
+                    }
+                    
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        // Add CLI_ID parameter.
+                        if (Guid.TryParse(CLI_ID, out Guid parsedCliId))
+                        {
+                            command.Parameters.AddWithValue("@CLI_ID", parsedCliId);
+                        }
+                        // Add search parameter if applicable.
+                        if (!string.IsNullOrEmpty(search))
+                        {
+                            command.Parameters.AddWithValue("@search", search);
+                        }
+                        
+                        using (var adapter = new SqlDataAdapter(command))
+                        {
+                            adapter.Fill(dataTable);
+                        }
                     }
                 }
-            }
-            var jsonResult = _dataTableService.ConvertToJson(dataTable);
-            return Ok(jsonResult);
+                var jsonResult = _dataTableService.ConvertToJson(dataTable);
+                return Ok(jsonResult);
             }
             catch (Exception ex)
             {
@@ -136,16 +187,168 @@ namespace carCard.Controllers
                     new { message = "Nepavyko užkrauti Componento" });
             }
         }
-       
+
+        [HttpGet("getCarsAll")]
+        [Authorize]
+        public IActionResult GetCarsAll([FromQuery] string CLI_ID, [FromQuery] string search = "")
+        {
+            var UserID = User?.FindFirst("USERID")?.Value;
+            if (!_adminService.IsAdmin(UserID))
+            {
+                return Unauthorized(new { message = "Neturite administratoriaus teisių." });
+            }
+
+            try
+            {
+                var dataTable = new DataTable();
+                using (var connection = _connectionProvider.GetConnection())
+                {
+                    connection.Open();
+                    // Build the base query.
+                    var query = @"
+                        SELECT 
+                            c.CAR_ID, 
+                            c.CAR_PLATE_NUMBER, 
+                            c.CAR_USER, 
+                            COALESCE(
+                                (SELECT MAX(cu.CAU_ODO_TO) FROM CARS_USAGE cu WHERE cu.CAU_CAR_ID = c.CAR_ID),
+                                c.CAR_INITIAL_ODO
+                            ) AS CurrentOdo,
+                            c.CAR_USAGE_START_DATE,
+                            c.CAR_FCA_ID
+                        FROM CARS c
+                        WHERE c.CAR_CLI_ID = @CLI_ID
+                    ";
+
+                    // Append search condition if search is provided.
+                    if (!string.IsNullOrEmpty(search))
+                    {
+                        query += " AND c.CAR_PLATE_NUMBER LIKE '%' + @search + '%'";
+                    }
+
+                    using (var command = new SqlCommand(query, connection))
+                    {
+                        if (Guid.TryParse(CLI_ID, out Guid parsedCliId))
+                        {
+                            command.Parameters.AddWithValue("@CLI_ID", parsedCliId);
+                        }
+                        // Only add the search parameter if provided.
+                        if (!string.IsNullOrEmpty(search))
+                        {
+                            command.Parameters.AddWithValue("@search", search);
+                        }
+                        using (var adapter = new SqlDataAdapter(command))
+                        {
+                            adapter.Fill(dataTable);
+                        }
+                    }
+                }
+                var jsonResult = _dataTableService.ConvertToJson(dataTable);
+                return Ok(jsonResult);
+            }
+            catch (Exception ex)
+            {
+                _exceptionLogger.LogException(
+                    source: "geCarsAll",
+                    message: ex.Message,
+                    stackTrace: ex.StackTrace
+                );
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { message = "Nepavyko užkrauti Componento" });
+            }
+        }
+
+
+
+        [HttpPost("updateCar")]
+        [Authorize]
+        public IActionResult updateCard([FromBody] UpdateCarRequest car)
+        {
+        var currentUserId = User?.FindFirst("USERID")?.Value;
+        if (!_adminService.IsAdmin(currentUserId))
+        {
+            return Unauthorized(new { message = "Jūs neturite teisių atlikti šią operaciją." });
+        }
+        
+        try
+        {
+            using (var connection = _connectionProvider.GetConnection())
+            {
+                connection.Open();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    var checkQuery = "SELECT COUNT(*) FROM CARS WHERE CAR_PLATE_NUMBER = @NewNumber AND CAR_ID <> @CarId";
+                    using (var checkCommand = new SqlCommand(checkQuery, connection, transaction))
+                    {
+                        checkCommand.Parameters.AddWithValue("@NewNumber", car.CAR_PLATE_NUMBER);
+                        checkCommand.Parameters.AddWithValue("@CarId", car.CAR_ID);
+                        int count = (int)checkCommand.ExecuteScalar();
+                        if (count > 0)
+                        {
+                            transaction.Rollback();
+                            return BadRequest(new { message = "Mašina tokiu numeriu jau sukurta." });
+                        }
+                    }
+                    
+                    var updateQuery = @"
+                    UPDATE CARS
+                    SET CAR_PLATE_NUMBER = @NewNumber,
+                        CAR_USER = @User,
+                        CAR_FCA_ID = @CAR_FCA_ID
+                    WHERE CAR_ID = @CarId";
+                using (var updateCommand = new SqlCommand(updateQuery, connection, transaction))
+                {
+                    updateCommand.Parameters.AddWithValue("@NewNumber", car.CAR_PLATE_NUMBER);
+                    updateCommand.Parameters.AddWithValue("@CarId", car.CAR_ID);
+                    updateCommand.Parameters.AddWithValue("@User", 
+                        !car.CAR_USER.HasValue || car.CAR_USER.Value == Guid.Empty 
+                            ? (object)DBNull.Value 
+                            : car.CAR_USER.Value);
+                    updateCommand.Parameters.AddWithValue("@CAR_FCA_ID", 
+                        car.CAR_FCA_ID.HasValue ? (object)car.CAR_FCA_ID.Value : DBNull.Value);
+
+                    updateCommand.ExecuteNonQuery();
+                }
+                    transaction.Commit();
+                }
+            }
+            return Ok(new { message = "Kortelė sėkmingai atnaujinta" });
+        }
+        catch (Exception ex)
+        {
+            _exceptionLogger.LogException(
+                source: "updateCar",
+                message: ex.Message,
+                stackTrace: ex.StackTrace
+            );
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new { message = "Nepavyko atnaujinti kortelės. Bandykite dar kartą." });
+        }
+        }
+
+
+
+
 
     public class AddCarRequest
     {
         public string carPlateNumber { get; set; }
         public string initialOdo { get; set; }
-        public Guid userId { get; set; }
-        public int cardId { get; set; }
+        public Guid? userId { get; set; }
+        public int? cardId { get; set; }
         public string CLI_ID { get; set; }
 
+    }
+    public class DeleteCarRequest
+    {
+        public int CAR_ID { get; set; }
+    }
+    public class UpdateCarRequest
+    {
+        public int CAR_ID { get; set; }
+        public string CAR_PLATE_NUMBER { get; set; }
+        public Guid? CAR_USER { get; set; }
+        public int? CAR_FCA_ID { get; set; }
     }
     }
 }

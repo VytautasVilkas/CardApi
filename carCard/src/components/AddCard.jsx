@@ -15,7 +15,7 @@ const AddCard = () => {
 
 
 
-  const [showUsers, setShowUsers] = useState(true);
+  const [ShowCards, setShowCards] = useState(true);
   const [refreshCards, setrefreshCards] = useState(0);
 
 
@@ -40,12 +40,10 @@ const AddCard = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccess(null);
-
     if (!cardNumber.trim() || !fuelType || !expirationDate.trim()) {
       setError("Kortelės numeris, degalų tipas ir galiojimo data yra privalomi.");
       return;
     }
-  
     setLoading(true);
     setError(null);
     const parsedFuelType = parseInt(fuelType, 10);
@@ -56,7 +54,6 @@ const AddCard = () => {
       additionalInfo,
       CLI_ID: cliId
     };
-  
     try {
       const result = await addCard(formData);
       setCardNumber("");
@@ -79,7 +76,7 @@ const AddCard = () => {
 
   return (
     <div className="flex flex-col items-center justify-center px-4 py-8 min-h-screen">
-      {/* Add User Form Container */}
+      {/* Add Cards Form Container */}
       <div className="max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl p-4 sm:p-6 border border-gray-300 rounded-lg bg-white shadow-md mb-8">
       <h2 className="text-xl font-bold mb-4">Pridėti kortelę</h2>
       <form onSubmit={handleSubmit}>
@@ -112,6 +109,7 @@ const AddCard = () => {
                 value={fuelType}
                 onChange={(e) => setFuelType(e.target.value)}
                 className="w-full border border-gray-300 p-2 rounded"
+                
                 >
                 <option value="">Pasirinkite degalų tipą</option>
                 {fuelTypes.map((ft) => (
@@ -163,15 +161,15 @@ const AddCard = () => {
     <div className="w-full max-w-7xl mx-auto mb-8 space-y-8">
         <div>
           <div className="flex items-center justify-between bg-gradient-to-r from-blue-300 to-blue-300 text-white px-8 py-2 rounded-t shadow-lg gap-x-4">
-            <h3 className="text-xl font-semibold">Vartotojų duomenys</h3>
+            <h3 className="text-xl font-semibold">Kortelių duomenys</h3>
           <button
-            onClick={() => setShowUsers((prev) => !prev)}
+            onClick={() => setShowCards((prev) => !prev)}
             className="bg-white text-purple-600 px-4 py-2 rounded shadow hover:bg-purple-100 transition-colors duration-200 text-xs"
           >
-            {showUsers ? "Slėpti" : "Rodyti"}
+            {ShowCards ? "Slėpti" : "Rodyti"}
           </button>
         </div>
-        {showUsers && (
+        {ShowCards && (
           <div className="bg-white p-8 rounded-b shadow-xl">
             <CardList  refreshCards={refreshCards} fuelTypes={fuelTypes}  />
           </div>

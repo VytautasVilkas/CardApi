@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getUsersAll, updateUser } from "../services/UserService";
+import { getUsersAll, updateUser,deleteUser } from "../services/UserService";
 import { getCars } from "../services/CarService";
 import { useUser } from "../context/UserContext";
 const Users = ({ refreshUsers }) => {
@@ -7,27 +7,31 @@ const Users = ({ refreshUsers }) => {
   const [cars, setCars] = useState([]);
   const [error, setError] = useState("");
   const {cliId} = useUser();
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await getUsersAll(cliId);
-        if (response) {
-          setUsers(response);
-          setError("");
-        }
-      } catch (err) {
-        setError(err.response?.data?.message || err.message);
+
+
+ // Search criteria state variables:
+  const [search, setSearchQuery] = useState(""); 
+
+  const fetchUsers = async () => {
+    try {
+      const response = await getUsersAll(cliId);
+      if (response) {
+        setUsers(response);
+        setError("");
       }
-    };
+    } catch (err) {
+      setError(err.response?.data?.message || err.message);
+    }
+  };
+
+  useEffect(() => {
     fetchUsers();
   }, [refreshUsers,cliId]);
-
-
 
   useEffect(() => {
     const fetchCars = async () => {
       try {
-        const response = await getCars(cliId);
+        const response = await getCars(cliId,"");
         if (response) {
           setCars(response);
           setError("");
@@ -36,7 +40,6 @@ const Users = ({ refreshUsers }) => {
         setError(err.response?.data?.message || err.message);
       }
     };
-
     if (users.length > 0) {
       fetchCars();
     }
@@ -50,7 +53,17 @@ const Users = ({ refreshUsers }) => {
       )
     );
   };
-
+  const handleSearch = async () => {
+      try {
+        const response = await getUsersAll(cliId,search);
+        if (response) {
+          setUsers(response);
+          setError("");
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || err.message);
+      }
+  };
   const handleUpdate = async (user) => {
     try {
       const selectedCar = cars.find(
@@ -84,20 +97,56 @@ const Users = ({ refreshUsers }) => {
       }
     }
   };
+  const handleDelete = async (userId) => {
+    if (!window.confirm("Ar tikrai norite ištrinti šį vartotoją?")) return;
+    try {
+      const payload = { USER_ID: userId };
+      const response = await deleteUser(payload);
+      alert(response.message || "Vartotojas ištrintas sėkmingai!");
+      // Remove the deleted user from the state (assuming user objects have a "userid" property)
+      setUsers((prevUsers) =>
+        prevUsers.filter((user) => user.userid !== userId)
+      );
+    } catch (err) {
+      alert(
+        "Klaida trinant vartotoją: " +
+          (err.response?.data?.message || err.message)
+      );
+    }
+  };
+  
   return (
+    <div className="">
+    {/* Search Strip Outside the Scrollable Container */}
+    <div className="mb-2">
+      <input
+        type="text"
+        placeholder="Ieškoti pagal vardą..."
+        value={search}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className=" border border-gray-300 p-2 rounded"
+      />
+      <button
+        onClick={handleSearch}
+        className="ml-4 bg-blue-300 border border-gray-400 hover:text-black hover:border-gray-500 text-white px-3 py-1 rounded hover:bg-blue-200 hover:scale-101 transition-all duration-200"      
+      >
+        Ieškoti
+      </button>
+    </div>
     <div className="max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto overflow-x-auto">
       {error && <p className="text-red-600">{error}</p>}
       {users.length > 0 ? (
         <table className="w-full border-collapse border border-gray-300 text-xs sm:text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <th className="border border-gray-300 p-2 whitespace-nowrap w-16">Vartotojo vardas</th>
-              <th className="border border-gray-300 p-2 whitespace-nowrap w-16">Rolė</th>
-              <th className="border border-gray-300 p-2 whitespace-nowrap w-30">Vardas</th>
-              <th className="border border-gray-300 p-2 whitespace-nowrap w-30">Pavardė</th>
-              <th className="border border-gray-300 p-2 whitespace-nowrap w-30">Mašina</th>
+              <th className="border border-gray-300 p-2 whitespace-nowrap min-w-[110px]">Vartotojo vardas</th>
+              <th className="border border-gray-300 p-2 whitespace-nowrap min-w-[110px]">Rolė</th>
+              <th className="border border-gray-300 p-2 whitespace-nowrap min-w-[110px]">Vardas</th>
+              <th className="border border-gray-300 p-2 whitespace-nowrap min-w-[110px]">Pavardė</th>
+              <th className="border border-gray-300 p-2 whitespace-nowrap min-w-[100px]">Mašina</th>
               <th className="border border-gray-300 p-2 whitespace-nowrap ">Kortelė</th>
               <th className="border border-gray-300 p-2 whitespace-nowrap ">Atnaujinti</th>
+              <th className="border border-gray-300 p-2 whitespace-nowrap ">Panaikinti</th>
             </tr>
           </thead>
           <tbody>
@@ -115,13 +164,15 @@ const Users = ({ refreshUsers }) => {
                   />
                 </td>
                 <td className="border border-gray-300 p-2">
-                  <input
-                    type="text"
-                    value={user.role}
-                    onChange={(e) => handleFieldChange(user.userid, "role", e.target.value)}
-                    className="w-full border border-gray-200 p-1 rounded"
-                  />
-                </td>
+                <select
+                  value={user.role}
+                  onChange={(e) => handleFieldChange(user.userid, "role", e.target.value)}
+                  className="w-full border border-gray-200 p-1 rounded"
+                >
+                  <option value="1">Adminas</option>
+                  <option value="2">Personalas</option>
+                </select>
+              </td>
                 <td className="border border-gray-300 p-2">
                   <input
                     type="text"
@@ -171,7 +222,18 @@ const Users = ({ refreshUsers }) => {
                     />
                   </button>
                 </td>
-                
+                <td className="border border-gray-300 p-2 whitespace-nowrap">
+                  <button
+                    onClick={() => handleDelete(user.userid)}
+                    className="transform transition duration-200 hover:scale-110 p-2 rounded"
+                  >
+                    <img
+                      src="https://img.icons8.com/ios/100/delete-trash.png"
+                      alt="Ištrinti"
+                      className="w-6 h-6"
+                    />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -179,6 +241,7 @@ const Users = ({ refreshUsers }) => {
       ) : (
         <p className="text-sm text-gray-600">Nėra vartotojų</p>
       )}
+    </div>
     </div>
   );
 };

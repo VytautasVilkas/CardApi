@@ -48,32 +48,33 @@ const CardsUsage = () => {
     <div className="max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto overflow-x-auto">
       {/* Search Strip */}
       <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
-        <input
-          type="text"
-          placeholder="Ieškoti pagal vietą..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-1/3 border border-gray-300 p-2 rounded"
-        />
-        <input
-          type="date"
-          value={searchFrom}
-          onChange={(e) => setSearchFrom(e.target.value)}
-          className="w-full sm:w-1/3 border border-gray-300 p-2 rounded"
-        />
-        <input
-          type="date"
-          value={searchTo}
-          onChange={(e) => setSearchTo(e.target.value)}
-          className="w-full sm:w-1/3 border border-gray-300 p-2 rounded"
-        />
-        <button
-          onClick={handleSearch}
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          Ieškoti
-        </button>
-      </div>
+      <input
+        type="text"
+        placeholder="Ieškoti pagal vietą..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="w-full sm:w-1/4 border border-gray-300 p-1 rounded"
+      />
+      <input
+        type="date"
+        value={searchFrom}
+        onChange={(e) => setSearchFrom(e.target.value)}
+        className="w-full sm:w-1/4 border border-gray-300 p-1 rounded"
+      />
+      <input
+        type="date"
+        value={searchTo}
+        onChange={(e) => setSearchTo(e.target.value)}
+        className="w-full sm:w-1/4 border border-gray-300 p-1 rounded"
+      />
+      <button
+        onClick={handleSearch}
+        className="ml-4 bg-blue-300 border border-gray-400 hover:text-black hover:border-gray-500 text-white px-3 py-1 rounded hover:bg-blue-200 hover:scale-101 transition-all duration-200"
+      >
+        Ieškoti
+      </button>
+    </div>
+
 
       {error && <p className="text-red-600">{error}</p>}
       {cardsUsage.length > 0 ? (

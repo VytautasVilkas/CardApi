@@ -14,11 +14,40 @@ export const addCar = async (carData) => {
     throw error;
   }
 };
-export const getCars = async (cliId) => {
+export const getCars = async (cliId,search = "") => {
   try {
     const response = await apiClient.get("/Car/getCars",{
-      params: { CLI_ID: cliId }
+      params: { CLI_ID: cliId,  search: search }
     });
+    return response.data;
+  } catch (error) {
+    console.error("Error adding car:", error);
+    throw error;
+  }
+};
+export const getCarsAll = async (cliId,carId = "") => {
+  try {
+    const response = await apiClient.get("/Car/getCarsAll",{
+      params: { CLI_ID: cliId, search: carId}
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error adding car:", error);
+    throw error;
+  }
+};
+export const updateCar = async (car) => {
+  try {
+    const response = await apiClient.post("/Car/updateCar",car);
+    return response.data;
+  } catch (error) {
+    console.error("Error adding car:", error);
+    throw error;
+  }
+};
+export const deleteCar = async (car) => {
+  try {
+    const response = await apiClient.post("/Car/deleteCar",car);
     return response.data;
   } catch (error) {
     console.error("Error adding car:", error);
@@ -27,7 +56,10 @@ export const getCars = async (cliId) => {
 };
 const CarService = {
   addCar,
-  getCars
+  getCars,
+  getCarsAll,
+  updateCar,
+  deleteCar
 };
 
 export default CarService;

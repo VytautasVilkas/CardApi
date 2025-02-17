@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Authorization;
 using System.Data;
+using System.Security.Cryptography;
 
 namespace carCard.Controllers
 {
@@ -26,7 +27,6 @@ namespace carCard.Controllers
     [Authorize]
     public IActionResult AddTrip([FromBody] AddTripRequest trip)
             {
-                Console.WriteLine("enter ");
                 try
                 {
                     using (var connection = _connectionProvider.GetConnection())
@@ -35,10 +35,10 @@ namespace carCard.Controllers
                         string userId = User.FindFirst("USERID")?.Value;
                         if (string.IsNullOrEmpty(userId))
                         {
-                            return Unauthorized(new { message = "User ID not found in token" });
+                            return Unauthorized(new { message = "Nerastas tokenas" });
                         }
                         string carId = null;
-                        string carInitialOdo = null;
+                        int carInitialOdo = 0;
                         var carQuery = @"
                             SELECT CAR_ID, CAR_INITIAL_ODO 
                             FROM CARS
@@ -52,7 +52,7 @@ namespace carCard.Controllers
                                 if (reader.Read())
                                 {
                                     carId = reader["CAR_ID"].ToString();
-                                    carInitialOdo = reader["CAR_INITIAL_ODO"].ToString();
+                                    carInitialOdo = (int)reader["CAR_INITIAL_ODO"];
                                 }
                                 else
                                 {
@@ -60,7 +60,7 @@ namespace carCard.Controllers
                                 }
                             }
                         }
-                        string lastOdoFrom = null;
+                        int lastOdoFrom = 0;
                         var usageQuery = @"
                             SELECT MAX(CAU_ODO_TO) AS LastOdo
                             FROM CARS_USAGE
@@ -70,11 +70,11 @@ namespace carCard.Controllers
                         {
                             usageCommand.Parameters.AddWithValue("@CarId", carId);
                             var result = usageCommand.ExecuteScalar();
-                            if (result != DBNull.Value && result != null)
+                            if (result != DBNull.Value && result != null )
                             {
-                                lastOdoFrom = result.ToString();
+                                lastOdoFrom = (int)result;
                             }
-                            else
+                            else 
                             {
                                 lastOdoFrom = carInitialOdo;
                             }
@@ -108,10 +108,7 @@ namespace carCard.Controllers
                         }
 
                         // Validate odometer values
-                        if (!decimal.TryParse(lastOdoFrom, out decimal odoFromValue))
-                        {
-                            return BadRequest(new { message = "Nepavyko nustatyti ridos reikšmės" });
-                        }
+                        
                         // if (!decimal.TryParse(trip.OdoTo, out decimal odoToValue))
                         // {
                         //     return BadRequest(new { message = "Nepavyko nustatyti ridos reikšmės" });
@@ -122,6 +119,16 @@ namespace carCard.Controllers
                         // }
 
                         // Insert the new trip record into CARS_USAGE
+
+
+                        int? odo = 0;
+                        if(trip.OdoTo == 0){
+                           odo = lastOdoFrom;
+                        }else
+                        {
+                            odo = trip.OdoTo;
+                        }
+
                         var insertQuery = @"
                             INSERT INTO CARS_USAGE (CAU_CAR_ID, CAU_ODO_FROM, CAU_ODO_TO, CAU_QTU_FROM, CAU_QTY_TO, CAU_DATE)
                             VALUES (@CarId, @OdoFrom, @OdoTo, @QtyFrom, @QtyTo, @Date)
@@ -130,7 +137,7 @@ namespace carCard.Controllers
                         {
                             insertCommand.Parameters.AddWithValue("@CarId", carId);
                             insertCommand.Parameters.AddWithValue("@OdoFrom", lastOdoFrom);
-                            insertCommand.Parameters.AddWithValue("@OdoTo", trip.OdoTo);
+                            insertCommand.Parameters.AddWithValue("@OdoTo", odo);
                             insertCommand.Parameters.AddWithValue("@QtyFrom", trip.QtyFrom);
                             insertCommand.Parameters.AddWithValue("@QtyTo", trip.QtyTo);
                             // Use currentDate or DateTime.UtcNow as needed
@@ -428,7 +435,6 @@ namespace carCard.Controllers
 
         try
         {
-            // Now query the CARS_USAGE table using the carId.
             var dataTable = new DataTable();
             using (var connection = _connectionProvider.GetConnection())
             {

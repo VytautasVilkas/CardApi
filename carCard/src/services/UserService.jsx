@@ -15,11 +15,32 @@ export const getUsers = async (cliId) => {
     throw error;
   }
 };
-
-export const getUsersAll = async (cliId) => {
+export const getUsersNotConnected = async (cliId) => {
   try {
-    const response = await apiClient.get("/User/getUsersAll",{
+    const response = await apiClient.get("/User/getUsersNotConnected",{
       params: { CLI_ID: cliId }
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    throw error;
+  }
+};
+export const deleteUser = async (USERID) => {
+  try {
+    const response = await apiClient.post("/User/DeleteUser",USERID
+      );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    throw error;
+  }
+};
+
+export const getUsersAll = async (cliId, search = "") => {
+  try {
+    const response = await apiClient.get("/User/getUsersAll", {
+      params: { CLI_ID: cliId, search: search }
     });
     return response.data;
   } catch (error) {

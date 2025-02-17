@@ -201,9 +201,60 @@ public class UserController : ControllerBase
                         return StatusCode(500, new { message = "Klaida bandant sukurti vartotoją" });
                     }
                 }
-                [HttpGet("getUsers")]
+                
+                [HttpPost("DeleteUser")]
                 [Authorize]
-                public IActionResult GetUsers([FromQuery]string CLI_ID)
+                public IActionResult DeleteUser([FromBody] DTODeleteUser user)
+                {
+                    try
+                    {
+                        using (var connection = _connectionProvider.GetConnection())
+                        {
+                            connection.Open();
+                            using (var transaction = connection.BeginTransaction())
+                            {
+                                string query = "DELETE FROM [USER] WHERE USERID = @USER_ID";
+                                using (var command = new SqlCommand(query, connection, transaction))
+                                {
+                                    command.Parameters.AddWithValue("@USER_ID", user.USER_ID);
+                                    int count = command.ExecuteNonQuery();
+                                    if (count <= 0)
+                                    {
+                                        transaction.Rollback();
+                                        return BadRequest(new { message = "Klaida: Nepavyko ištrinti vartotojo" });
+                                    }
+                                }
+
+                                string queryCar = "UPDATE CARS SET CAR_USER = NULL WHERE CAR_USER = @USER_ID";
+                                using (var command = new SqlCommand(queryCar, connection, transaction))
+                                {
+                                    command.Parameters.AddWithValue("@USER_ID", user.USER_ID);
+                                    int count = command.ExecuteNonQuery();
+                                }
+
+                                transaction.Commit();
+                                return Ok(new { message = "Vartotojas sėkmingai ištrintas" });
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptionLogger.LogException(
+                            source: "DeleteUser",
+                            message: ex.Message,
+                            stackTrace: ex.StackTrace
+                        );
+                        return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Klaida" });
+                    }
+                }
+
+                
+                
+                
+                
+                [HttpGet("getUsersNotConnected")]
+                [Authorize]
+                public IActionResult GetUsersNotConnected([FromQuery]string CLI_ID)
                 {
                     var currentUserId = User?.FindFirst("USERID")?.Value;
                     if (!_adminService.IsAdmin( currentUserId ))
@@ -253,6 +304,62 @@ public class UserController : ControllerBase
                     catch (Exception ex)
                     {
                         exceptionLogger.LogException(
+                            source: "getUsersNotConnected",
+                            message: ex.Message,
+                            stackTrace: ex.StackTrace
+                        );
+                        return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Klaida" });
+                    }
+                    
+                }
+                
+                [HttpGet("getUsers")]
+                [Authorize]
+                public IActionResult GetUsers([FromQuery]string CLI_ID)
+                {
+                    var currentUserId = User?.FindFirst("USERID")?.Value;
+                    if (!_adminService.IsAdmin( currentUserId ))
+                    {
+                        return Unauthorized(new { message = "Jūs neturite teisių atlikti šią operaciją." });
+                    }
+                    
+                        try
+                        {
+                        using (var connection = _connectionProvider.GetConnection())
+                        {
+                            connection.Open();
+                            var query = @"
+                                SELECT u.USERID, u.USERNAME, u.ROLE
+                                FROM [USER] u
+                                WHERE 
+                                u.CLI_ID = @CLI_ID
+                            ";
+
+                            var command = new SqlCommand(query, connection);
+                            var users = new List<AppUser>();
+                            if (Guid.TryParse(CLI_ID, out Guid parsedCliId))
+                            {
+                                command.Parameters.AddWithValue("@CLI_ID", parsedCliId);
+                            }
+                            using (var reader = command.ExecuteReader())
+                            {                          
+                                while (reader.Read())
+                                {
+                                    var user = new AppUser
+                                    {
+                                        USERID = reader["USERID"].ToString(),
+                                        USERNAME = reader["USERNAME"].ToString(),
+                                        Role = reader["ROLE"].ToString()
+                                    };
+                                    users.Add(user);
+                                }
+                            }
+                            return Ok(users);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptionLogger.LogException(
                             source: "GetUsers",
                             message: ex.Message,
                             stackTrace: ex.StackTrace
@@ -261,17 +368,21 @@ public class UserController : ControllerBase
                     }
                     
                 }
+                
+                
+                
+                
+                
                 [HttpGet("getUsersAll")]
                 [Authorize]
-                public IActionResult GetUsersFULL([FromQuery] string CLI_ID)
+                public IActionResult GetUsersFULL([FromQuery] string CLI_ID, [FromQuery] string search = "")
                 {
                     var currentUserId = User?.FindFirst("USERID")?.Value;
-                    if (!_adminService.IsAdmin( currentUserId ))
+                    if (!_adminService.IsAdmin(currentUserId))
                     {
                         return Unauthorized(new { message = "Jūs neturite teisių atlikti šią operaciją." });
                     }
-                   
-                        try
+                    try
                     {
                         using (var connection = _connectionProvider.GetConnection())
                         {
@@ -289,36 +400,51 @@ public class UserController : ControllerBase
                                 LEFT JOIN CARS c ON c.CAR_USER = u.USERID
                                 LEFT JOIN CARDS d ON d.FCA_ID = c.CAR_FCA_ID
                                 WHERE u.CLI_ID = @CLI_ID
-                                GROUP BY u.USERID, u.USERNAME, u.ROLE, u.NAME, u.SURNAME;
                             ";
-
-                            var command = new SqlCommand(query, connection);
-                            if (Guid.TryParse(CLI_ID, out Guid parsedCliId))
+                            if (!string.IsNullOrEmpty(search))
                             {
-                                command.Parameters.AddWithValue("@CLI_ID", parsedCliId);
+                                query += @"
+                                    AND (
+                                        u.USERNAME LIKE '%' + @search + '%' OR 
+                                        u.NAME LIKE '%' + @search + '%' OR 
+                                        u.SURNAME LIKE '%' + @search + '%'
+                                    )
+                                ";
                             }
-                            
-                            var users = new List<AppUserFULL>();
 
-                            using (var reader = command.ExecuteReader())
-                            {   
+                            query += " GROUP BY u.USERID, u.USERNAME, u.ROLE, u.NAME, u.SURNAME;";
 
-                                while (reader.Read())
+                            using (var command = new SqlCommand(query, connection))
+                            {
+                                if (Guid.TryParse(CLI_ID, out Guid parsedCliId))
                                 {
-                                    var user = new AppUserFULL
-                                    {
-                                        USERID = reader["USERID"].ToString(),
-                                        USERNAME = reader["USERNAME"].ToString(),
-                                        ROLE = reader["ROLE"].ToString(),
-                                        NAME = reader["NAME"].ToString(),
-                                        SURNAME = reader["SURNAME"].ToString(),
-                                        CAR_NUMBER = reader["CAR_PLATE_NUMBER"].ToString(),
-                                        CARD_NUMBER = reader["FCA_NUMBER"].ToString(),
-                                    };
-                                    users.Add(user);
+                                    command.Parameters.AddWithValue("@CLI_ID", parsedCliId);
                                 }
+                                if (!string.IsNullOrEmpty(search))
+                                {
+                                    command.Parameters.AddWithValue("@search", search);
+                                }
+
+                                var users = new List<AppUserFULL>();
+                                using (var reader = command.ExecuteReader())
+                                {
+                                    while (reader.Read())
+                                    {
+                                        var user = new AppUserFULL
+                                        {
+                                            USERID = reader["USERID"].ToString(),
+                                            USERNAME = reader["USERNAME"].ToString(),
+                                            ROLE = reader["ROLE"].ToString(),
+                                            NAME = reader["NAME"].ToString(),
+                                            SURNAME = reader["SURNAME"].ToString(),
+                                            CAR_NUMBER = reader["CAR_PLATE_NUMBER"].ToString(),
+                                            CARD_NUMBER = reader["FCA_NUMBER"].ToString(),
+                                        };
+                                        users.Add(user);
+                                    }
+                                }
+                                return Ok(users);
                             }
-                            return Ok(users);
                         }
                     }
                     catch (Exception ex)
@@ -328,9 +454,11 @@ public class UserController : ControllerBase
                             message: ex.Message,
                             stackTrace: ex.StackTrace
                         );
-                        return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error retrieving users." });
+                        return StatusCode(StatusCodes.Status500InternalServerError,
+                            new { message = "Error retrieving users." });
                     }
                 }
+
                 [HttpPost("UpdateUser")]
                 [Authorize]
                 public IActionResult UpdateUser([FromBody] UpdateUserRequest request)
@@ -1033,6 +1161,11 @@ public class UserController : ControllerBase
         public string NAME { get; set; }
         public string SURNAME { get; set; }
         public string CLI_ID { get; set; }
+
+    }
+     public class DTODeleteUser
+    {
+        public string USER_ID { get; set; }
 
     }
     public class AppUserFULL

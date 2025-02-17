@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { addCar } from "../services/CarService"; // Service to add a new car
-import { getUsers } from "../services/UserService"; // Service to fetch users
-import { getNotConnectedCards } from "../services/CardService";  // Service to fetch cards
+import { addCar } from "../services/CarService"; 
+import { getUsersNotConnected } from "../services/UserService"; 
+import { getNotConnectedCards } from "../services/CardService";  
 import { useUser } from "../context/UserContext";
-
+import CarList from "./Cars";
 const AddCar = () => {
   const [carPlateNumber, setCarPlateNumber] = useState("");
   const [initialOdo, setInitialOdo] = useState("");
-  // Optional dropdowns: if nothing is selected, they remain empty strings
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedCard, setSelectedCard] = useState("");
   const [error, setError] = useState(null);
@@ -15,11 +14,13 @@ const AddCar = () => {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [cards, setCards] = useState([]);
+  const [ShowCars, setShowCars] = useState(true);
+  const [refreshCars, setrefreshCars] = useState(0);
   const { cliId } = useUser();
 
   const fetchUsers = async () => {
     try {
-      const data = await getUsers(cliId);
+      const data = await getUsersNotConnected(cliId);
       setUsers(data);
     } catch (err) {
       setError(err.response?.data?.message || "Nepavyko užkrauti vartotojų. Bandykite dar kartą.");
@@ -28,7 +29,6 @@ const AddCar = () => {
 
   const fetchCards = async () => {
     try {
-      console.log("Fetched cards: " + cliId);
       const data = await getNotConnectedCards(cliId);
       setCards(data);
     } catch (err) {
@@ -46,7 +46,6 @@ const AddCar = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccess(null);
-    // Only require carPlateNumber and initialOdo.
     if (!carPlateNumber.trim() || !initialOdo.trim()) {
       setError("Automobilio numeris ir pradinis rida yra privalomi.");
       return;
@@ -56,19 +55,18 @@ const AddCar = () => {
     const formData = {
       carPlateNumber,
       initialOdo,
-      // If the dropdown is empty string, pass null
       userId: selectedUser.trim() ? selectedUser : null,
-      cardId: selectedCard.trim() ? selectedCard : null,
+      cardId: selectedCard.trim() ? parseInt(selectedCard, 10) : null,
       CLI_ID: cliId
     };
     try {
       const result = await addCar(formData);
-      console.log("Car added successfully:", result);
       setCarPlateNumber("");
       setInitialOdo("");
       setSelectedUser("");
       setSelectedCard("");
       setSuccess("Automobilis sėkmingai pridėtas!");
+      setrefreshCars((prev) => prev + 1);
     } catch (err) {
       setError(err.response?.data?.message || "Nepavyko pridėti automobilio. Bandykite dar kartą.");
     } finally {
@@ -77,7 +75,8 @@ const AddCar = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white p-6 rounded shadow">
+    <div className="flex flex-col items-center justify-center px-4 py-8 min-h-screen">
+      <div className="max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl p-4 sm:p-6 border border-gray-300 rounded-lg bg-white shadow-md mb-8">
       <h2 className="text-xl font-bold mb-4">Pridėti Automobilį</h2>
       <form onSubmit={handleSubmit}>
         {/* Car Plate Number */}
@@ -162,6 +161,26 @@ const AddCar = () => {
           {loading ? "Pateikiama..." : "Pateikti"}
         </button>
       </form>
+      </div>
+      {/* cars List Section */}
+      <div className="w-full max-w-7xl mx-auto mb-8 space-y-8">
+        <div>
+          <div className="flex items-center justify-between bg-gradient-to-r from-blue-300 to-blue-300 text-white px-8 py-2 rounded-t shadow-lg gap-x-4">
+            <h3 className="text-xl font-semibold">Mašinos</h3>
+          <button
+            onClick={() => setShowCars((prev) => !prev)}
+            className="bg-white text-purple-600 px-4 py-2 rounded shadow hover:bg-purple-100 transition-colors duration-200 text-xs"
+          >
+            {ShowCars ? "Slėpti" : "Rodyti"}
+          </button>
+        </div>
+        {ShowCars && (
+          <div className="bg-white p-8 rounded-b shadow-xl">
+            <CarList refreshCars={refreshCars}/>
+          </div>
+        )}
+      </div>
+      </div>
     </div>
   );
 };
