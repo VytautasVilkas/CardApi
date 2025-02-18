@@ -1,29 +1,51 @@
 import React, { useState, useEffect } from "react";
-import { getCarsUsage, updateCarsUsage } from "../services/TripService";
-
-const CarsUsage = ({ refreshUsage }) => {
+import { getCarsUsage, updateCarsUsage,getCarsUsageAdmin,updateCarsUsageAdmin   } from "../services/TripService";
+import { useUser } from "../context/UserContext";
+const CarsUsage = ({ refreshUsage, selectedUserId }) => {
   const [carsUsage, setCarsUsage] = useState([]);
   const [error, setError] = useState("");
+  const {role} = useUser();
+  const [searchFrom, setSearchFrom] = useState("");
+  const [searchTo, setSearchTo] = useState("");
 
-  useEffect(() => {
-    const fetchCarsUsage = async () => {
-      try {
-        const response = await getCarsUsage();
-        if (response) {
-          setCarsUsage(response);
-          setError("");
-        }
-      } catch (err) {
-        if (err.response && err.response.data && err.response.data.message) {
-          setError(err.response.data.message);
-        } else {
-          setError(err.message);
-        }
+  const fetchCarsUsage = async () => {
+    try {
+      const response = await getCarsUsage(searchFrom,searchTo);
+      if (response) {
+        setCarsUsage(response);
+        setError("");
       }
-    };
-
+    } catch (err) {
+      if (err.response && err.response.data && err.response.data.message) {
+        setError(err.response.data.message);
+      } else {
+        setError(err.message);
+      }
+    }
+  };
+  const fetchCarsUsageAdmin = async () => {
+    try {
+      const response = await getCarsUsageAdmin(searchFrom,searchTo,selectedUserId);
+      if (response) {
+        setCarsUsage(response);
+        setError("");
+      }
+    } catch (err) {
+      if (err.response && err.response.data && err.response.data.message) {
+        setError(err.response.data.message);
+      } else {
+        setError(err.message);
+      }
+    }
+  };
+  useEffect(() => {
+    if(role == "2"){
     fetchCarsUsage();
-  }, [refreshUsage]);
+    }
+    if(role == "1" && selectedUserId){
+    fetchCarsUsageAdmin();
+    }
+  }, [refreshUsage, selectedUserId]);
 
   const handleFieldChange = (id, fieldName, value) => {
     setCarsUsage((prev) =>
@@ -34,13 +56,33 @@ const CarsUsage = ({ refreshUsage }) => {
   };
 
   const handleUpdate = async (record) => {
+    console.log( selectedUserId);
+    if(role == "2"){
     try {
       const response = await updateCarsUsage(record);
       alert(response.message);
     } catch (err) {
       alert("Error updating record: " + (err.response?.data?.message || err.message));
     }
+    }
+    if(role == "1" &&  selectedUserId){
+      try {
+        console.log(record);
+        const response = await updateCarsUsageAdmin(record, selectedUserId);
+        alert(response.message);
+      } catch (err) {
+        alert("Error updating record: " + (err.response?.data?.message || err.message));
+      }
+      }
   };
+  const handleSearch = async () => {
+    if(role == "2"){
+      fetchCarsUsage();
+      }
+      if(role == "1" && selectedUserId){
+      fetchCarsUsageAdmin();
+      }
+    };
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -48,8 +90,27 @@ const CarsUsage = ({ refreshUsage }) => {
   };
 
   return (
-    // Outer container: fixed maximum width, centered, and horizontal scroll enabled.
     <div className="max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl max-w-[400px] mx-auto overflow-x-auto">
+    <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
+      <input
+        type="date"
+        value={searchFrom}
+        onChange={(e) => setSearchFrom(e.target.value)}
+        className="w-full sm:w-1/4 border border-gray-300 p-2 rounded"
+      />
+      <input
+        type="date"
+        value={searchTo}
+        onChange={(e) => setSearchTo(e.target.value)}
+        className="w-full sm:w-1/4 border border-gray-300 p-2 rounded"
+      />
+      <button
+        onClick={handleSearch}
+        className="ml-4 bg-blue-300 border border-gray-400 hover:text-black hover:border-gray-500 text-white px-3 py-1 rounded hover:bg-blue-200 hover:scale-101 transition-all duration-200"      
+      >
+        Ieškoti
+      </button>
+    </div>
       {error && <p className="text-red-600">{error}</p>}
       {carsUsage.length > 0 ? (
         <table className="w-full border-collapse border border-gray-300 text-xs sm:text-sm">

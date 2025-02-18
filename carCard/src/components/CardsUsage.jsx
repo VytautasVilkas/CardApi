@@ -1,34 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { getCardsUsage} from "../services/TripService";
-const CardsUsage = () => {
+import { getCardsUsage, getCardsUsageAdmin } from "../services/TripService";
+import { useUser } from "../context/UserContext";
+
+const CardsUsage = ({ selectedUserId }) => {
   const [cardsUsage, setCardsUsage] = useState([]);
   const [error, setError] = useState("");
-
+  const { role } = useUser();
+  
   // Search criteria state variables:
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchFrom, setSearchFrom] = useState(""); 
-  const [searchTo, setSearchTo] = useState("");     
+  const [searchFrom, setSearchFrom] = useState("");
+  const [searchTo, setSearchTo] = useState("");
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const response = await getCardsUsage("", "", "");
-        if (response) {
-          setCardsUsage(response);
-          setError("");
-        }
-      } catch (err) {
-        setError(err.response?.data?.message || err.message);
-      }
-    };
-
-    fetchInitialData();
-  }, []);
-
-  // This function is triggered by the search button.
-  const handleSearch = async () => {
+  const fetchInitialData = async () => {
     try {
-      const response = await getCardsUsage(searchQuery, searchFrom, searchTo);
+      const response = await getCardsUsage("", "", "");
       if (response) {
         setCardsUsage(response);
         setError("");
@@ -37,7 +23,53 @@ const CardsUsage = () => {
       setError(err.response?.data?.message || err.message);
     }
   };
+  const fetchInitialDataAdmin = async () => {
+    try {
+      const response = await getCardsUsageAdmin("", "", "", selectedUserId);
+      if (response) {
+        setCardsUsage(response);
+        setError("");
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message);
+    }
+  };
+  useEffect(() => {
+    if (role === "2") {
+      fetchInitialData();
+    }
+  }, [role]);
 
+  useEffect(() => {
+    if (role === "1" && selectedUserId) {
+      fetchInitialDataAdmin();
+    }
+  }, [role, selectedUserId]); 
+
+  const handleSearch = async () => {
+    if (role === "2") {
+      try {
+        const response = await getCardsUsage(searchQuery, searchFrom, searchTo);
+        if (response) {
+          setCardsUsage(response);
+          setError("");
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || err.message);
+      }
+    }
+    if (role === "1") {
+      try {
+        const response = await getCardsUsageAdmin(searchQuery, searchFrom, searchTo,selectedUserId);
+        if (response) {
+          setCardsUsage(response);
+          setError("");
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || err.message);
+      }
+    }
+  };
   // Format date for display (only the date part)
   const formatDate = (dateString) => {
     if (!dateString) return "";

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { getLastOdo, startTrip, getCarPlate } from "../services/TripService";
+import { getLastOdo, startTrip, startTripAdmin, getCarPlate,getLastOdoAdmin, getCarPlateAdmin} from "../services/TripService";
 import CardsUsage from "./CardsUsage";
 import CarsUsage from "./CarsUsage";
-
+import { useUser } from "../context/UserContext";
+import { getUsers } from "../services/UserService"; 
 const StartTrip = () => {
+  const {role,cliId,Username } = useUser();
   const [odoFrom, setOdoFrom] = useState("");
   const [odoTo, setOdoTo] = useState("");
   const [qtyFrom, setQtyFrom] = useState("");
   const [qtyTo, setQtyTo] = useState("");
-  const [tripDate, setTripDate] = useState("");
   const [carPlate, setCarPlate] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -16,31 +17,20 @@ const StartTrip = () => {
   const [refreshUsage, setRefreshUsage] = useState(0);
   const [showCards, setShowCards] = useState(true);
   const [showCars, setShowCars] = useState(true);
+  const [users, setUsers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
 
-  const fetchLastOdo = async () => {
+  const fetchOwnData = async () => {
     try {
-      const response = await getLastOdo();
-      if (response && response.lastOdo) {
-        setOdoFrom(response.lastOdo);
-        setError("");
-      } else if (response && response.message) {
-        setError(response.message);
+      const odoResponse = await getLastOdo();
+      if (odoResponse && odoResponse.lastOdo) {
+        setOdoFrom(odoResponse.lastOdo);
       } else {
         setError("Paskutinė rida nerasta.");
       }
-    } catch (err) {
-      setError(err.response?.data?.message || err.message);
-    }
-  };
-
-  const fetchCarPlate = async () => {
-    try {
-      const response = await getCarPlate();
-      if (response && response.carPlate) {
-        setCarPlate(response.carPlate);
-        setError("");
-      } else if (response && response.message) {
-        setError(response.message);
+      const plateResponse = await getCarPlate();
+      if (plateResponse && plateResponse.carPlate) {
+        setCarPlate(plateResponse.carPlate);
       } else {
         setError("Automobilio numeris nerastas.");
       }
@@ -48,39 +38,102 @@ const StartTrip = () => {
       setError(err.response?.data?.message || err.message);
     }
   };
-
-  // Fetch initial data on mount.
+  const fetchUsers = async () => {
+    try {
+      const data = await getUsers(cliId);
+      setUsers(data);
+      if (data.length > 0) {
+        if (role === "1") {
+          const adminUser = data.find(user => user.username === Username);
+          if (adminUser) {
+            setSelectedUserId(adminUser.userid);
+          } else {
+            setSelectedUserId(data[0].userid);
+          }
+        } else {
+          const isSelectedUserValid = data.some((user) => user.userid === selectedUserId);
+          if (!isSelectedUserValid) {
+            setSelectedUserId(data[0].userid);
+          }
+        }
+      } else {
+        setSelectedUserId("");
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Nepavyko užkrauti vartotojų. Bandykite dar kartą.");
+    }
+  };
+  
+  const fetchDataForSelectedUser = async (userId) => {
+    try {
+      const odoResponse = await getLastOdoAdmin(userId);
+      if (odoResponse && odoResponse.lastOdo) {
+        setOdoFrom(odoResponse.lastOdo);
+      } else {
+        setError("Paskutinė rida nerasta.");
+        setOdoFrom("");
+      }
+      const plateResponse = await getCarPlateAdmin(userId);
+      if (plateResponse && plateResponse.carPlate) {
+        setCarPlate(plateResponse.carPlate);
+      } else {
+        setError("Automobilio numeris nerastas.");
+        setCarPlate("");
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message);
+      setCarPlate("");
+      setOdoFrom("");
+    }
+  };
   useEffect(() => {
-    fetchLastOdo();
-    fetchCarPlate();
-  }, []);
+    setError("");
+    if (role === "2") {
+      fetchOwnData();
+    } else if (role === "1") {
+      fetchUsers();
+    }
+  }, [role, cliId]);
+
+  useEffect(() => {
+    setError("");
+    if (role === "1" && selectedUserId) {
+      fetchDataForSelectedUser(selectedUserId);
+    }
+  }, [role, selectedUserId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
     setLoading(true);
-    const lastOdoNumber = Number(odoFrom);
-    const currentOdoNumber = Number(odoTo);
-    // if ( currentOdoNumber <= lastOdoNumber) {
-    //   setError("Blogai įvestas odometro duomenys: Rida 'iki' turi būti didesnė už 'nuo'.");
-    //   setLoading(false);
-    //   return;
-    // }
-
-    const tripData = {
-      OdoTo: odoTo === "" ? 0 : Number(odoTo),
-      QtyFrom: qtyFrom === "" ? 0 : Number(qtyFrom),
-      QtyTo: qtyTo === "" ? 0 : Number(qtyTo),
-    };
-    console.log(tripData);
     try {
-      const response = await startTrip(tripData);
-      setSuccess(response.message);
-      setOdoTo("");
-      setQtyFrom("");
-      setQtyTo("");
-      fetchLastOdo();
+      if (role === "2") {
+        const response = await startTrip(tripData);
+        const tripData = {
+          OdoTo: odoTo === "" ? 0 : Number(odoTo),
+          QtyFrom: qtyFrom === "" ? 0 : Number(qtyFrom),
+          QtyTo: qtyTo === "" ? 0 : Number(qtyTo),
+        };
+        setSuccess(response.message);
+        setOdoTo("");
+        setQtyFrom("");
+        setQtyTo("");
+        fetchOwnData();
+      } else if (role === "1" && selectedUserId) {
+        const tripData = {
+          User: selectedUserId,
+          OdoTo: odoTo === "" ? 0 : Number(odoTo),
+          QtyFrom: qtyFrom === "" ? 0 : Number(qtyFrom),
+          QtyTo: qtyTo === "" ? 0 : Number(qtyTo),
+        };
+        const response = await startTripAdmin(tripData);
+        setSuccess(response.message);
+        setOdoTo("");
+        setQtyFrom("");
+        setQtyTo("");
+        fetchDataForSelectedUser(selectedUserId);
+      }
       setRefreshUsage((prev) => prev + 1);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
@@ -91,8 +144,27 @@ const StartTrip = () => {
   return (
     // Outer container for responsive design
       <div className="flex flex-col items-center justify-center px-4 py-8 min-h-screen">
+        
     {/* Form Container */}
       <div className="max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl p-4 sm:p-6 border border-gray-300 rounded-lg bg-white shadow-md mb-8">
+      {role === "1" && (
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-900">
+          Pasirinkite vartotoją
+        </label>
+        <select
+          value={selectedUserId}
+          onChange={(e) => setSelectedUserId(e.target.value)}
+          className="w-full border border-gray-300 p-2 rounded"
+        >
+          {users.map((user) => (
+            <option key={user.userid} value={user.userid.toString()}>
+              {user.username}
+            </option>
+          ))}
+        </select>
+      </div>
+    )}
         <h2 className="text-xl font-bold mb-4 text-center">Pridėti Ridą</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Car Plate (read-only) */}
@@ -172,7 +244,7 @@ const StartTrip = () => {
           </div>
           {showCards && (
             <div className="bg-white p-8 rounded-b shadow-xl">
-              <CardsUsage refreshUsage={refreshUsage} />
+              <CardsUsage refreshUsage={refreshUsage} selectedUserId={selectedUserId} />
             </div>
           )}
         </div>
@@ -188,7 +260,7 @@ const StartTrip = () => {
           </div>
           {showCars && (
             <div className="bg-white p-8 rounded-b shadow-xl">
-              <CarsUsage refreshUsage={refreshUsage} />
+              <CarsUsage refreshUsage={refreshUsage} selectedUserId={selectedUserId} />
             </div>
           )}
         </div>

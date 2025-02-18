@@ -13,7 +13,7 @@ const Menu = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeComponent, setActiveComponent] = useState("");
   const [cliOptions, setCliOptions] = useState([]);
-  const { role, Name, Surname, logout, cliId, setCliId } = useUser();
+  const {role, Name, Surname, logout, cliId, setCliId, cliName, setCliName } = useUser();
 
   const handleLogout = async () => {
     try {
@@ -25,7 +25,7 @@ const Menu = () => {
 
   useEffect(() => {
     if (role === "0") {
-      setActiveComponent("one");
+      setActiveComponent("three");
     } else if (role === "2") {
       setActiveComponent("six");
     } else if (role === "1") {
@@ -35,28 +35,33 @@ const Menu = () => {
 
   useEffect(() => {
     const fetchCliOptions = async () => {
-      if (role === "0") {
+      
         try {
           const response = await getCliOptions();
           if (response && response.length > 0) {
             setCliOptions(response);
-            // Set default CLI_ID to the first option if not already set.
-            if (!cliId) {
+            if (cliId == "Admin") {
               setCliId(response[0].CLI_ID);
+              setCliName(response[0].CLI_NAME);
             }
           }
         } catch (err) {
           console.error("Error fetching CLI options:", err);
         }
-      }
     };
     fetchCliOptions();
   }, [role, cliId, setCliId]);
 
   useEffect(() => {
-    if(cliId){console.log("cli_id updated to:", cliId);}
-   
-  }, [cliId]);
+    if (cliId && cliOptions.length > 0) {
+      const selectedOption = cliOptions.find(
+        (option) => option.CLI_ID === cliId
+      );
+      if (selectedOption) {
+        setCliName(selectedOption.CLI_NAME);
+      }
+    }
+  }, [cliId, cliOptions, setCliName]);
 
   const renderComponent = () => {
     switch (activeComponent) {
@@ -79,6 +84,7 @@ const Menu = () => {
 
   return (
     <div className="flex min-h-screen">
+
       {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-20 transform ${
@@ -103,17 +109,20 @@ const Menu = () => {
         </div>
         <nav className="flex-grow p-4 space-y-4">
           {/* CLI select for company admin */}
-          {role === "0" && (
+          {(role === "1" || role === "0") && (
             <div className="max-w-4xl mx-auto mb-4">
               <label className="block text-sm font-medium text-gray-900">
-                Pasirinkti klientą
+                Pasirinkti įmonę
               </label>
               <select
                 value={cliId || ""}
                 onChange={(e) => {
                   const newCliId = e.target.value;
-                  console.log("Selected CLI_ID:", newCliId);
+                  const selectedIndex = e.target.selectedIndex;
+                  const newCliName = e.target.options[selectedIndex].text;
+                  console.log("Selected CLI_ID:", newCliId, "CLI_NAME:", newCliName);
                   setCliId(newCliId);
+                  setCliName(newCliName);
                 }}
                 className="w-full border border-gray-300 p-2 rounded"
               >
@@ -244,7 +253,12 @@ const Menu = () => {
           </div>
         </button>
 
-        <div className="max-w-4xl mx-auto">{renderComponent()}</div>
+        <div className="max-w-4xl mx-auto">
+        <header className="w-full bg-white shadow-md py-4 px-6">
+        <h1 className="text-2xl font-bold text-gray-800">
+          {cliName ? cliName : "Jūsų įmonės pavadinimas"}
+        </h1>
+      </header>{renderComponent()}</div>
       </main>
     </div>
   );

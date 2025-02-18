@@ -220,7 +220,6 @@ namespace carCard.Controllers
                         WHERE c.CAR_CLI_ID = @CLI_ID
                     ";
 
-                    // Append search condition if search is provided.
                     if (!string.IsNullOrEmpty(search))
                     {
                         query += " AND c.CAR_PLATE_NUMBER LIKE '%' + @search + '%'";
@@ -232,7 +231,6 @@ namespace carCard.Controllers
                         {
                             command.Parameters.AddWithValue("@CLI_ID", parsedCliId);
                         }
-                        // Only add the search parameter if provided.
                         if (!string.IsNullOrEmpty(search))
                         {
                             command.Parameters.AddWithValue("@search", search);

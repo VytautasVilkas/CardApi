@@ -8,11 +8,13 @@ import { UserProvider } from "./context/UserContext";
 function App() {
   return (
     <UserProvider>
+      
       <Layout>
         <Router>
           <AppRoutes />
         </Router>
       </Layout>
+      
     </UserProvider>
   );
 }

@@ -117,7 +117,7 @@ public class UserController : ControllerBase
                         });
 
                         // Explicitly name the role property
-                        return Ok(new { message = "Sekmingai prisijungta", isValid = true, role = user.Role,user.NAME, user.SURNAME,user.CLI_ID });
+                        return Ok(new { message = "Sekmingai prisijungta", isValid = true, role = user.Role,user.USERNAME,user.NAME, user.SURNAME,user.CLI_ID });
                     }
                     catch (Exception ex)
                     {
@@ -248,10 +248,7 @@ public class UserController : ControllerBase
                     }
                 }
 
-                
-                
-                
-                
+  
                 [HttpGet("getUsersNotConnected")]
                 [Authorize]
                 public IActionResult GetUsersNotConnected([FromQuery]string CLI_ID)
@@ -368,11 +365,7 @@ public class UserController : ControllerBase
                     }
                     
                 }
-                
-                
-                
-                
-                
+
                 [HttpGet("getUsersAll")]
                 [Authorize]
                 public IActionResult GetUsersFULL([FromQuery] string CLI_ID, [FromQuery] string search = "")
@@ -882,7 +875,7 @@ public class UserController : ControllerBase
                                     SameSite = SameSiteMode.Strict,
                                     Expires = DateTime.UtcNow.AddDays(7)
                                 });
-                                    return Ok(new { message = "Tokenas validus", isValid = true, role = user.Role, user.NAME, user.SURNAME, user.CLI_ID}); 
+                                    return Ok(new { message = "Tokenas validus", isValid = true, role = user.Role, user.USERNAME,user.NAME, user.SURNAME, user.CLI_ID}); 
                                 }
                             
                         
@@ -896,11 +889,7 @@ public class UserController : ControllerBase
                 [Authorize]
                 public IActionResult GetCli()
                 {
-                        var currentUserId = User?.FindFirst("USERID")?.Value;
-                            if (!_adminService.IsTheAdmin(currentUserId))
-                            {
-                                return Unauthorized(new { message = "Jūs neturite teisių atlikti šią operaciją." });
-                            }
+                    var currentUserId = User?.FindFirst("USERID")?.Value;        
                     try 
                     {
                     using(var connection = _connectionProvider.GetConnection()){

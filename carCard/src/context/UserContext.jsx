@@ -8,9 +8,11 @@ export const useUser = () => useContext(UserContext);
 export const UserProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [cliId, setCliId] = useState("");
+  const [cliName,setCliName] =useState("");
   const [role, setRole] = useState(null);
   const [Name, setName] = useState(null);
   const [Surname, setSurname] = useState(null);
+  const [Username,setUsername] = useState(null);
   const [isLoading, setIsLoading] = useState(true);  
   
   const isMounted = useRef(false);
@@ -21,6 +23,7 @@ export const UserProvider = ({ children }) => {
     setName(null);
     setSurname(null);
     setCliId("");
+    setUsername("");
   };
 
   useEffect(() => {
@@ -46,12 +49,17 @@ export const UserProvider = ({ children }) => {
             setCliId(verifyResponse.clI_ID
             );
           }
+          if (verifyResponse.username) {
+            setUsername(verifyResponse.username);
+          }
         } else {
           setIsAuthenticated(false);
           setRole(null);
           setName(null);
           setSurname(null);
-          setcli_id("");
+          setCliId("");
+          setCliName("");
+          setUsername("");
         }
       } catch (verifyError) {
         console.error("Token verification failed:", verifyError);
@@ -59,7 +67,9 @@ export const UserProvider = ({ children }) => {
         setRole(null);
         setName(null);
         setSurname(null);
-        setcli_id("");
+        setCliId("");
+        setCliName("");
+        setUsername("");
       } finally {
         setIsLoading(false);  
       }
@@ -77,6 +87,9 @@ export const UserProvider = ({ children }) => {
       setRole(null);
       setName(null);
       setSurname(null);
+      setCliId("");
+      setCliName("");
+      setUsername("");
     } catch (error) {
       throw error;
     }
@@ -96,6 +109,12 @@ export const UserProvider = ({ children }) => {
         if (loginResponse.surname) {
           setSurname(loginResponse.surname);
         }
+        if (loginResponse.clI_ID) {
+          setCliId(loginResponse.clI_ID);
+        }
+        if (loginResponse.username) {
+          setUsername(loginResponse.username);
+        }
       }
     } catch (error) {
       throw error;
@@ -103,7 +122,7 @@ export const UserProvider = ({ children }) => {
   };
 
   return (
-    <UserContext.Provider value={{ isAuthenticated, role, Name, Surname, isLoading ,cliId,setCliId, login, logout, forceLogout }}>
+    <UserContext.Provider value={{ Username, cliName, setCliName ,isAuthenticated, role, Name, Surname, isLoading ,cliId,setCliId, login, logout, forceLogout }}>
       {children}
     </UserContext.Provider>
   );

@@ -51,6 +51,7 @@ const Cars = ({refreshCars}) => {
     fetchUsers();
     fetchCards();
   }, [refreshCars, cliId]);
+
   const handleSearch = async () => {
       try {
         const response = await getCarsAll(cliId,search);
@@ -75,7 +76,7 @@ const Cars = ({refreshCars}) => {
       const payload = {
         CAR_ID: car.CAR_ID,
         CAR_PLATE_NUMBER: car.CAR_PLATE_NUMBER,
-        CAR_USER: car.CAR_USER && car.CAR_USER.trim() !== "" ? car.CAR_USER : null,
+        CAR_USER: typeof car.CAR_USER === 'string' ? car.CAR_USER.trim() || null : null,
         CAR_FCA_ID: (typeof car.CAR_FCA_ID === "number" && car.CAR_FCA_ID !== 0) ? car.CAR_FCA_ID : null,
       };
       console.log(payload);
