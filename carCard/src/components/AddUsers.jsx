@@ -32,7 +32,6 @@ const AddUsers = () => {
       SURNAME: surname,
       CLI_ID: cliId || ""
     };
-    console.log(newUser);
     try {
       const response = await addUser(newUser);
       setMessage(response.message || "Vartotojas sėkmingai pridėtas!");

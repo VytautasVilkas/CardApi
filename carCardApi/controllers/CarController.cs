@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Authorization;
 using System.Data;
+using Microsoft.AspNetCore.Components.Forms;
 namespace carCard.Controllers
 {
     [ApiController]
@@ -56,8 +57,8 @@ namespace carCard.Controllers
                     }
 
                     var query = @"
-                        INSERT INTO CARS (CAR_PLATE_NUMBER, CAR_INITIAL_ODO, CAR_USER, CAR_FCA_ID, CAR_USAGE_START_DATE, CAR_CLI_ID)
-                        VALUES (@CarPlateNumber, @InitialOdo, @UserId, @CardId, @Date, @CAR_CLI_ID)
+                        INSERT INTO CARS (CAR_PLATE_NUMBER, CAR_INITIAL_ODO, CAR_USER, CAR_FCA_ID, CAR_USAGE_START_DATE, CAR_CLI_ID,CAR_SANDELIS,CAR_TIKSLAS,CAR_TYPE)
+                        VALUES (@CarPlateNumber, @InitialOdo, @UserId, @CardId, @Date, @CAR_CLI_ID,@CAR_SANDELIS,@CAR_TIKSLAS,@CAR_TYPE)
                     ";
                     using (var command = new SqlCommand(query, connection))
                     {
@@ -69,6 +70,9 @@ namespace carCard.Controllers
                         car.cardId.HasValue ? (object)car.cardId.Value : DBNull.Value);
                         command.Parameters.AddWithValue("@CAR_CLI_ID", car.CLI_ID);
                         command.Parameters.AddWithValue("@Date", DateTime.UtcNow);
+                        command.Parameters.AddWithValue("@CAR_SANDELIS", car.sandelis);
+                        command.Parameters.AddWithValue("@CAR_TIKSLAS", car.tikslas);
+                        command.Parameters.AddWithValue("@CAR_TYPE", car.CAR_TYPE);
                         command.ExecuteNonQuery();
                     }
                 }
@@ -145,10 +149,7 @@ namespace carCard.Controllers
                 using (var connection = _connectionProvider.GetConnection())
                 {
                     connection.Open();
-                    // Build base query.
                     var query = "SELECT CAR_ID, CAR_PLATE_NUMBER FROM CARS WHERE CAR_CLI_ID = @CLI_ID";
-                    
-                    // Append additional condition if search is provided.
                     if (!string.IsNullOrEmpty(search))
                     {
                         query += " AND CAR_PLATE_NUMBER LIKE '%' + @search + '%'";
@@ -156,7 +157,6 @@ namespace carCard.Controllers
                     
                     using (var command = new SqlCommand(query, connection))
                     {
-                        // Add CLI_ID parameter.
                         if (Guid.TryParse(CLI_ID, out Guid parsedCliId))
                         {
                             command.Parameters.AddWithValue("@CLI_ID", parsedCliId);
@@ -188,6 +188,41 @@ namespace carCard.Controllers
             }
         }
 
+        
+        [HttpGet("getCarType")]
+        [Authorize]
+        
+        public IActionResult getCarTypes()
+        {
+            try{
+                using (var connection = _connectionProvider.GetConnection())
+                {
+                    connection.Open();
+                    var dt = new DataTable();
+                    var query = "SELECT TYPE_ID,TYPE_NAME,TYPE_CODE FROM CAR_TYPE";
+                    using (var command = new SqlCommand(query,connection))
+                    {
+                        using (var adapter = new SqlDataAdapter(command))
+                        {   
+                                adapter.Fill(dt);
+                                if (dt.Rows.Count>0){
+
+                                     return Ok(_dataTableService.ConvertToJson(dt));                                      
+                                }else
+                                {
+                                        return BadRequest(new {message = "Nerasta"});
+                                }
+                        }
+                    }
+                }
+            }catch(Exception ex)
+            {
+                    return StatusCode(StatusCodes.Status500InternalServerError, new {message = "Klaida" });
+            }
+        }
+        
+        
+        
         [HttpGet("getCarsAll")]
         [Authorize]
         public IActionResult GetCarsAll([FromQuery] string CLI_ID, [FromQuery] string search = "")
@@ -215,7 +250,10 @@ namespace carCard.Controllers
                                 c.CAR_INITIAL_ODO
                             ) AS CurrentOdo,
                             c.CAR_USAGE_START_DATE,
-                            c.CAR_FCA_ID
+                            c.CAR_FCA_ID,
+                            c.CAR_SANDELIS,
+                            c.CAR_TIKSLAS,
+                            c.CAR_TYPE
                         FROM CARS c
                         WHERE c.CAR_CLI_ID = @CLI_ID
                     ";
@@ -255,9 +293,6 @@ namespace carCard.Controllers
                     new { message = "Nepavyko užkrauti Componento" });
             }
         }
-
-
-
         [HttpPost("updateCar")]
         [Authorize]
         public IActionResult updateCard([FromBody] UpdateCarRequest car)
@@ -286,17 +321,23 @@ namespace carCard.Controllers
                             transaction.Rollback();
                             return BadRequest(new { message = "Mašina tokiu numeriu jau sukurta." });
                         }
-                    }
-                    
+                    }   
                     var updateQuery = @"
                     UPDATE CARS
                     SET CAR_PLATE_NUMBER = @NewNumber,
                         CAR_USER = @User,
-                        CAR_FCA_ID = @CAR_FCA_ID
+                        CAR_FCA_ID = @CAR_FCA_ID,
+                        CAR_SANDELIS = @CAR_SANDELIS,
+                        CAR_TIKSLAS = @CAR_TIKSLAS,
+                        CAR_TYPE = @CAR_TYPE
                     WHERE CAR_ID = @CarId";
                 using (var updateCommand = new SqlCommand(updateQuery, connection, transaction))
                 {
                     updateCommand.Parameters.AddWithValue("@NewNumber", car.CAR_PLATE_NUMBER);
+                    updateCommand.Parameters.AddWithValue("@CAR_SANDELIS", car.CAR_SANDELIS);
+                    updateCommand.Parameters.AddWithValue("@CAR_TIKSLAS", car.CAR_TIKSLAS);
+                    updateCommand.Parameters.AddWithValue("@CAR_TYPE",
+                     car.CAR_TYPE.HasValue?(object)car.CAR_TYPE.Value : DBNull.Value);
                     updateCommand.Parameters.AddWithValue("@CarId", car.CAR_ID);
                     updateCommand.Parameters.AddWithValue("@User", 
                         !car.CAR_USER.HasValue || car.CAR_USER.Value == Guid.Empty 
@@ -306,7 +347,7 @@ namespace carCard.Controllers
                         car.CAR_FCA_ID.HasValue ? (object)car.CAR_FCA_ID.Value : DBNull.Value);
 
                     updateCommand.ExecuteNonQuery();
-                }
+                } 
                     transaction.Commit();
                 }
             }
@@ -335,6 +376,9 @@ namespace carCard.Controllers
         public Guid? userId { get; set; }
         public int? cardId { get; set; }
         public string CLI_ID { get; set; }
+        public string sandelis { get; set; }
+        public string tikslas { get; set; }
+        public int CAR_TYPE { get; set; }
 
     }
     public class DeleteCarRequest
@@ -347,6 +391,9 @@ namespace carCard.Controllers
         public string CAR_PLATE_NUMBER { get; set; }
         public Guid? CAR_USER { get; set; }
         public int? CAR_FCA_ID { get; set; }
+        public string CAR_SANDELIS { get; set; }
+        public string CAR_TIKSLAS { get; set; }
+        public int? CAR_TYPE { get; set; }
     }
     }
 }

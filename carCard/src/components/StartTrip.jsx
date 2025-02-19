@@ -109,12 +109,12 @@ const StartTrip = () => {
     setLoading(true);
     try {
       if (role === "2") {
-        const response = await startTrip(tripData);
         const tripData = {
           OdoTo: odoTo === "" ? 0 : Number(odoTo),
           QtyFrom: qtyFrom === "" ? 0 : Number(qtyFrom),
           QtyTo: qtyTo === "" ? 0 : Number(qtyTo),
         };
+        const response = await startTrip(tripData);
         setSuccess(response.message);
         setOdoTo("");
         setQtyFrom("");

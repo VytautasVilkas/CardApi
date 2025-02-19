@@ -119,7 +119,7 @@ export const updateCarsUsage = async (updatedRecord) => {
 };
 export const updateCarsUsageAdmin = async (updatedRecord, selectedUserId = "") => {
   try {
-    const response = await apiClient.post("/StartTrip/updateCarsUsage", updatedRecord, {
+    const response = await apiClient.post("/StartTrip/updateCarsUsageAdmin", updatedRecord, {
       params: { selectedUserId },
     })
     return response.data;

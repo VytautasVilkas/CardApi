@@ -25,6 +25,15 @@ export const getCars = async (cliId,search = "") => {
     throw error;
   }
 };
+export const getCarType = async () => {
+  try {
+    const response = await apiClient.get("/Car/getCarType");
+    return response.data;
+  } catch (error) {
+    console.error("Error getting car types:", error);
+    throw error;
+  }
+};
 export const getCarsAll = async (cliId,carId = "") => {
   try {
     const response = await apiClient.get("/Car/getCarsAll",{

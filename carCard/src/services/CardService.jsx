@@ -30,10 +30,10 @@ export const getNotConnectedCards = async (cliId) => {
   }
 };
 
-export const getCards = async (cliId) => {
+export const getCards = async (cliId, search = "" ) => {
   try {
     const response = await apiClient.get(`/Card/getCards`, {
-      params: { CLI_ID: cliId },
+      params: { CLI_ID: cliId, search: search},
     });
     return response.data;
   } catch (error) {

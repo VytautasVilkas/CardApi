@@ -155,60 +155,74 @@ public class CardController : ControllerBase
     
     
     
-        [HttpGet("getCards")]
-        [Authorize]
-        public IActionResult getAllCards([FromQuery] string CLI_ID)
-        {
-            var currentUserId = User?.FindFirst("USERID")?.Value;
-            if (!_adminService.IsAdmin(currentUserId))
+            [HttpGet("getCards")]
+            [Authorize]
+            public IActionResult getAllCards([FromQuery] string CLI_ID, [FromQuery] string search = "")
             {
-                return Unauthorized(new { message = "Jūs neturite teisių atlikti šią operaciją." });
-            }
-
-            try
-            {
-                DataTable dt = new DataTable();
-                using (var connection = _connectionProvider.GetConnection())
+                var currentUserId = User?.FindFirst("USERID")?.Value;
+                if (!_adminService.IsAdmin(currentUserId))
                 {
-                    connection.Open();
-                    var query = @"
-                        SELECT 
-                            c.FCA_ID, 
-                            c.FCA_NUMBER, 
-                            FAC_ADDITIONALINFO, 
-                            FCA_VALID_UNTIL, 
-                            FCA_FUEL_TYPE
-                        FROM CARDS c
-                        WHERE FCA_VALID = 1 AND FCA_CLI_ID = @CLI_ID;";
-                    using (var command = new SqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@CLI_ID", CLI_ID);
-                        using (var adapter = new SqlDataAdapter(command))
-                        {
-                            adapter.Fill(dt);
-                        }
-                    }
+                    return Unauthorized(new { message = "Jūs neturite teisių atlikti šią operaciją." });
                 }
 
-                var jsonResult = _dataTableService.ConvertToJson(dt);
-                    
+                try
+                {
+                    DataTable dt = new DataTable();
+                    using (var connection = _connectionProvider.GetConnection())
+                    {
+                        connection.Open();
+                        var query = @"
+                            SELECT 
+                                c.FCA_ID, 
+                                c.FCA_NUMBER, 
+                                c.FAC_ADDITIONALINFO, 
+                                c.FCA_VALID_UNTIL, 
+                                c.FCA_FUEL_TYPE
+                            FROM CARDS c
+                            WHERE FCA_VALID = 1 AND FCA_CLI_ID = @CLI_ID";
+                        
+                        // Trim and check the search parameter
+                        var trimmedSearch = search?.Trim();
+                        if (!string.IsNullOrEmpty(trimmedSearch))
+                        {
+                            query += " AND c.FCA_NUMBER LIKE '%' + @search + '%'";
+                        }
+                        using (var command = new SqlCommand(query, connection))
+                        {
+                            // If CLI_ID is a GUID in the database, you might want to parse it:
+                            if (Guid.TryParse(CLI_ID, out Guid parsedCliId))
+                            {
+                                command.Parameters.AddWithValue("@CLI_ID", parsedCliId);
+                            }
+                            else
+                            {
+                                command.Parameters.AddWithValue("@CLI_ID", CLI_ID);
+                            }
+                            if (!string.IsNullOrEmpty(trimmedSearch))
+                            {
+                                command.Parameters.AddWithValue("@search", trimmedSearch);
+                            }
+                            using (var adapter = new SqlDataAdapter(command))
+                            {
+                                adapter.Fill(dt);
+                            }
+                        }
+                    }
 
-
-                Console.WriteLine(jsonResult);
-                return Ok(jsonResult);
+                    var jsonResult = _dataTableService.ConvertToJson(dt);
+                    return Ok(jsonResult);
+                }
+                catch (Exception ex)
+                {
+                    exceptionLogger.LogException(
+                        source: "getCards",
+                        message: ex.Message,
+                        stackTrace: ex.StackTrace
+                    );
+                    return StatusCode(StatusCodes.Status500InternalServerError,
+                        new { message = "Nepavyko gauti kortelių. Bandykite dar kartą." });
+                }
             }
-            catch (Exception ex)
-            {
-                exceptionLogger.LogException(
-                    source: "getCards",
-                    message: ex.Message,
-                    stackTrace: ex.StackTrace
-                );
-                return StatusCode(StatusCodes.Status500InternalServerError, 
-                    new { message = "Nepavyko gauti kortelių. Bandykite dar kartą." });
-            }
-        }
-
 
 
         [HttpPost("updateCard")]

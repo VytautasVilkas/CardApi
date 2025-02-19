@@ -6,12 +6,14 @@ const Cards = ({ refreshCards, fuelTypes }) => {
   const [cards, setCards] = useState([]);
   const [error, setError] = useState("");
   const { cliId } = useUser();
+  // Search criteria state variables:
+  const [search, setSearchQuery] = useState(""); 
+
   useEffect(() => {
     const fetchCards = async () => {
       try {
-        const response = await getCards(cliId);
+        const response = await getCards(cliId,search);
         if (response) {
-          console.log(response);
           setCards(response);
           setError("");
         }
@@ -45,6 +47,17 @@ const Cards = ({ refreshCards, fuelTypes }) => {
       );
     }
   };
+  const handleSearch = async () => {
+        try {
+          const response = await getCards(cliId,search);
+          if (response) {
+            setCards(response);
+            setError("");
+          }
+        } catch (err) {
+          setError(err.response?.data?.message || err.message);
+        }
+  };
   
   const handleDelete = async (cardId) => {
     if (!window.confirm("Ar tikrai norite ištrinti šią kortelę?")) return;
@@ -69,6 +82,23 @@ const Cards = ({ refreshCards, fuelTypes }) => {
     return dateString.split("T")[0];
   };
   return (
+    <div className="">
+    {/* Search Strip Outside the Scrollable Container */}
+    <div className="mb-2">
+      <input
+        type="text"
+        placeholder="Ieškoti pagal kortelės numerį..."
+        value={search}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className=" border border-gray-300 p-2 rounded"
+      />
+      <button
+        onClick={handleSearch}
+        className="ml-4 bg-blue-300 border border-gray-400 hover:text-black hover:border-gray-500 text-white px-3 py-1 rounded hover:bg-blue-200 hover:scale-101 transition-all duration-200"      
+      >
+        Ieškoti
+      </button>
+    </div>
     <div className="max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto overflow-x-auto">
       {error && <p className="text-red-600">{error}</p>}
       {cards.length > 0 ? (
@@ -185,6 +215,7 @@ const Cards = ({ refreshCards, fuelTypes }) => {
       ) : (
         <p className="text-sm text-gray-600">Nėra kortelių</p>
       )}
+    </div>
     </div>
   );
 };

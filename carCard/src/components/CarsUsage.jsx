@@ -56,7 +56,7 @@ const CarsUsage = ({ refreshUsage, selectedUserId }) => {
   };
 
   const handleUpdate = async (record) => {
-    console.log( selectedUserId);
+    
     if(role == "2"){
     try {
       const response = await updateCarsUsage(record);
@@ -67,7 +67,6 @@ const CarsUsage = ({ refreshUsage, selectedUserId }) => {
     }
     if(role == "1" &&  selectedUserId){
       try {
-        console.log(record);
         const response = await updateCarsUsageAdmin(record, selectedUserId);
         alert(response.message);
       } catch (err) {

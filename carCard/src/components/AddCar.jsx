@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { addCar } from "../services/CarService"; 
+import { addCar,getCarType } from "../services/CarService"; 
 import { getUsersNotConnected } from "../services/UserService"; 
 import { getNotConnectedCards } from "../services/CardService";  
 import { useUser } from "../context/UserContext";
@@ -7,13 +7,17 @@ import CarList from "./Cars";
 const AddCar = () => {
   const [carPlateNumber, setCarPlateNumber] = useState("");
   const [initialOdo, setInitialOdo] = useState("");
+  const [sandelis, setSandelis] = useState("");
+  const [tikslas, setTikslas] = useState("");
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedCard, setSelectedCard] = useState("");
+  const [selectedType, SetselectedType] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
   const [cards, setCards] = useState([]);
+  const [types, setTypes] = useState([]);
   const [ShowCars, setShowCars] = useState(true);
   const [refreshCars, setrefreshCars] = useState(0);
   const { cliId } = useUser();
@@ -35,9 +39,18 @@ const AddCar = () => {
       setError(err.response?.data?.message || "Nepavyko užkrauti kortelių. Bandykite dar kartą.");
     }
   };
+  const fetchCarTypes= async () => {
+    try {
+      const data = await getCarType();
+      setTypes(data);
+    } catch (err) {
+      setError(err.response?.data?.message || "Nepavyko mašinu tipų. Bandykite dar kartą.");
+    }
+  };
 
   useEffect(() => {
     if (cliId) {
+      fetchCarTypes();
       fetchUsers();
       fetchCards();
     }
@@ -55,6 +68,9 @@ const AddCar = () => {
     const formData = {
       carPlateNumber,
       initialOdo,
+      tikslas,
+      sandelis,
+      CAR_TYPE:selectedType.trim() ? parseInt(selectedType, 10) : null,     
       userId: selectedUser.trim() ? selectedUser : null,
       cardId: selectedCard.trim() ? parseInt(selectedCard, 10) : null,
       CLI_ID: cliId
@@ -108,7 +124,54 @@ const AddCar = () => {
             className="w-full border border-gray-300 p-2 rounded"
           />
         </div>
-
+        {/* Type */}
+        <div className="mb-4">
+          <label htmlFor="selectCarType" className="block mb-1 font-medium">
+            Pasirinkite Tipą 
+          </label>
+          <select
+            id="selectCarType"
+            value={selectedType}
+            onChange={(e) => SetselectedType(e.target.value)}
+            className="w-full border border-gray-300 p-2 rounded"
+          >
+            <option value="">Nepriskirti</option>
+            {types.map((type) => (
+              <option key={type.TYPE_ID} value={type.TYPE_ID}>
+                {type.TYPE_NAME}
+              </option>
+            ))}
+          </select>
+        </div>
+        {/* sandelis */}
+        <div className="mb-4">
+          <label htmlFor="sandelis" className="block mb-1 font-medium">
+            Sandėlis (nebūtina)
+          </label>
+          <input
+            id="sandelis"
+            type="text"
+            value={sandelis}
+            onChange={(e) => setSandelis(e.target.value)}
+            placeholder="Įveskite sandėlį"
+            className="w-full border border-gray-300 p-2 rounded"
+          />
+        </div>
+        {/* Tikslas */}
+        <div className="mb-4">
+          <label htmlFor="tikslas" className="block mb-1 font-medium">
+            Tikslas (nebūtina)
+          </label>
+          <input
+            id="tikslas"
+            type="text"
+            value={tikslas}
+            onChange={(e) => setTikslas(e.target.value)}
+            placeholder="Įveskite tikslą"
+            className="w-full border border-gray-300 p-2 rounded"
+          />
+        </div>
+        
         {/* Optional User Dropdown */}
         <div className="mb-4">
           <label htmlFor="selectedUser" className="block mb-1 font-medium">
@@ -128,7 +191,7 @@ const AddCar = () => {
             ))}
           </select>
         </div>
-
+        
         {/* Optional Card Dropdown */}
         <div className="mb-4">
           <label htmlFor="selectedCard" className="block mb-1 font-medium">
@@ -176,7 +239,7 @@ const AddCar = () => {
         </div>
         {ShowCars && (
           <div className="bg-white p-8 rounded-b shadow-xl">
-            <CarList refreshCars={refreshCars}/>
+            <CarList refreshCars={refreshCars} types = {types}/>
           </div>
         )}
       </div>

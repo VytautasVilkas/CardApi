@@ -1044,7 +1044,7 @@ namespace carCard.Controllers
     [Authorize]
     public IActionResult UpdateCarsUsageAdmin([FromBody] CarsUsageAdminUpdateRequest request,[FromQuery] string selectedUserId)
         {
-            Console.WriteLine(selectedUserId);
+            
             try
             {
                 var currentUserId = User?.FindFirst("USERID")?.Value;
@@ -1052,12 +1052,10 @@ namespace carCard.Controllers
                 {
                     return Unauthorized(new { message = "Jūs neturite teisių atlikti šią operaciją." });
                 }
-                
                 if (string.IsNullOrEmpty(selectedUserId))
                 {
                     return BadRequest(new { message = "Negautas vartotojo id" });
                 }
-
                 using (var connection = _connectionProvider.GetConnection())
                 {
                     connection.Open();
@@ -1072,6 +1070,7 @@ namespace carCard.Controllers
                         WHERE CAU_ID = @Id
                         AND CAU_CAR_ID IN (SELECT CAR_ID FROM CARS WHERE CAR_USER = @UserId);
                     ";
+                    
 
                     using (var command = new SqlCommand(query, connection))
                     {
