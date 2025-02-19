@@ -404,9 +404,115 @@ public class FileController : ControllerBase
                 return StatusCode(500, new { message = "Nepavyko pridėti failo", details = ex.Message });
             }
         }
+
         
-        
-        
+
+
+            [HttpGet("GetExcelFile")]
+            [Authorize]
+            public async Task<IActionResult> GetExcelFile()
+            {
+                // Your SQL query
+                var query = @"
+                    SELECT
+                        FT.FUEL_PRK_KODAS                      AS [Prekės Nr.],
+                        C.CAR_SANDELIS                         AS [Sandėlis],
+                        SUM(U.FCU_QTY)                         AS [Kiekis],
+                        SUM(U.FCU_TOTAL_AMOUNT)                AS [Grynoji suma],
+                        C.CAR_PADALINYS                        AS [vPadalinys],
+                        T.TYPE_CODE                            AS [vPirkėjas],
+                        C.CAR_TIKSLAS                          AS [vTikslas]
+                    FROM CARDS_USAGE U
+                        LEFT JOIN FUEL_TYPE FT ON U.FCU_FUEL_TYPE = FT.FUEL_ID
+                        LEFT JOIN CARS C       ON U.FCU_FCA_ID    = C.CAR_FCA_ID
+                        LEFT JOIN CAR_TYPE T ON C.CAR_TYPE = T.TYPE_ID
+                    GROUP BY
+                        FT.FUEL_PRK_KODAS,
+                        C.CAR_SANDELIS,
+                        C.CAR_PADALINYS,
+                        T.TYPE_CODE,
+                        C.CAR_TIKSLAS;
+                ";
+
+                var dataTable = new DataTable();
+
+                try
+                {
+                    using (var connection = _connectionProvider.GetConnection())
+                    {
+                        if (connection.State != ConnectionState.Open)
+                        {
+                            connection.Open();
+                        }
+                        using (var command = new SqlCommand(query, connection))
+                        {
+                            using (var adapter = new SqlDataAdapter(command))
+                            {
+                                adapter.Fill(dataTable);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    exceptionLogger.LogException(
+                    source: "GetExcelFile",
+                    message: ex.Message,
+                    stackTrace: ex.StackTrace
+                );
+                    Console.WriteLine(ex.Message);
+                    return StatusCode(500, "Error executing SQL query: " + ex.Message);
+                }
+
+                // Set EPPlus license context before creating the package
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+                // Generate Excel file
+                try
+                {
+                    using (var package = new ExcelPackage())
+                    {
+                        var worksheet = package.Workbook.Worksheets.Add("CAR_USAGE");
+
+                        // Create header row from DataTable columns
+                        for (int col = 0; col < dataTable.Columns.Count; col++)
+                        {
+                            worksheet.Cells[1, col + 1].Value = dataTable.Columns[col].ColumnName;
+                        }
+
+                        // Fill data rows from DataTable
+                        for (int row = 0; row < dataTable.Rows.Count; row++)
+                        {
+                            for (int col = 0; col < dataTable.Columns.Count; col++)
+                            {
+                                worksheet.Cells[row + 2, col + 1].Value = dataTable.Rows[row][col];
+                            }
+                        }
+
+                        // Check that there is content before auto-fitting columns
+                        if (worksheet.Dimension != null)
+                        {
+                            worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
+                        }
+
+                        var excelBytes = package.GetAsByteArray();
+
+                        return File(
+                            excelBytes,
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            "CarUsage.xlsx"
+                        );
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log the error as needed
+                    return StatusCode(500, "Error generating Excel file: " + ex.Message);
+                }
+            }
+
+    
+
         
         // [HttpPost("file-upload-all")]
         // [Authorize]

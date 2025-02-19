@@ -71,6 +71,7 @@ const Cars = ({refreshCars,types}) => {
   const handleUpdate = async (car) => {
     try {
       const carTypeNumber = Number(car.CAR_TYPE);
+      const carPadalinys = Number(car.CAR_PADALINYS);
       const payload = {
         CAR_ID: car.CAR_ID,
         CAR_PLATE_NUMBER: car.CAR_PLATE_NUMBER,
@@ -79,8 +80,8 @@ const Cars = ({refreshCars,types}) => {
         CAR_SANDELIS:car.CAR_SANDELIS,
         CAR_TIKSLAS:car.CAR_TIKSLAS,
         CAR_TYPE: (!isNaN(carTypeNumber) && carTypeNumber !== 0) ? carTypeNumber : null,
+        CAR_PADALINYS: (!isNaN(carPadalinys) && carPadalinys !== 0) ? carPadalinys : null,
       };
-      console.log(payload);
       const response = await updateCar(payload);
       alert(response.message || "Automobilis atnaujintas sėkmingai!");
     } catch (err) {
@@ -136,6 +137,7 @@ const Cars = ({refreshCars,types}) => {
               <th className="border border-gray-300 p-2 whitespace-nowrap">Pradėta naudoti</th>
               <th className="border border-gray-300 p-2 whitespace-nowrap min-w-[100px]">Sandėlis</th>
               <th className="border border-gray-300 p-2 whitespace-nowrap min-w-[100px]">Tikslas</th>
+              <th className="border border-gray-300 p-2 whitespace-nowrap min-w-[80px]">Padalinys</th>
               <th className="border border-gray-300 p-2 whitespace-nowrap">Atnaujinti</th>
               <th className="border border-gray-300 p-2 whitespace-nowrap">Panaikinti</th>
             </tr>
@@ -242,6 +244,21 @@ const Cars = ({refreshCars,types}) => {
                     className="w-full border border-gray-200 p-1 rounded"
                   />
                 </td>
+                {/* Padalinys */}
+                <td className="border border-gray-300 p-2 whitespace-nowrap">
+                <input
+                  type="number"
+                  value={car.CAR_PADALINYS || ""} // Fallback to empty string if value is nullish
+                  onChange={(e) =>
+                    handleFieldChange(
+                      car.CAR_ID,
+                      "CAR_PADALINYS",
+                      e.target.value === "" ? "" : Number(e.target.value)
+                    )
+                  }
+                  className="w-full border border-gray-200 p-1 rounded"
+                />
+              </td>
                 {/* Atnaujinti */}
                 <td className="border border-gray-300 p-2 whitespace-nowrap">
                   <button

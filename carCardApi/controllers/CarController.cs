@@ -57,8 +57,8 @@ namespace carCard.Controllers
                     }
 
                     var query = @"
-                        INSERT INTO CARS (CAR_PLATE_NUMBER, CAR_INITIAL_ODO, CAR_USER, CAR_FCA_ID, CAR_USAGE_START_DATE, CAR_CLI_ID,CAR_SANDELIS,CAR_TIKSLAS,CAR_TYPE)
-                        VALUES (@CarPlateNumber, @InitialOdo, @UserId, @CardId, @Date, @CAR_CLI_ID,@CAR_SANDELIS,@CAR_TIKSLAS,@CAR_TYPE)
+                        INSERT INTO CARS (CAR_PLATE_NUMBER, CAR_INITIAL_ODO, CAR_USER, CAR_FCA_ID, CAR_USAGE_START_DATE, CAR_CLI_ID,CAR_SANDELIS,CAR_TIKSLAS,CAR_TYPE,CAR_PADALINYS)
+                        VALUES (@CarPlateNumber, @InitialOdo, @UserId, @CardId, @Date, @CAR_CLI_ID,@CAR_SANDELIS,@CAR_TIKSLAS,@CAR_TYPE,@CAR_PADALINYS)
                     ";
                     using (var command = new SqlCommand(query, connection))
                     {
@@ -73,6 +73,7 @@ namespace carCard.Controllers
                         command.Parameters.AddWithValue("@CAR_SANDELIS", car.sandelis);
                         command.Parameters.AddWithValue("@CAR_TIKSLAS", car.tikslas);
                         command.Parameters.AddWithValue("@CAR_TYPE", car.CAR_TYPE);
+                        command.Parameters.AddWithValue("@CAR_PADALINYS", car.CAR_PADALINYS);
                         command.ExecuteNonQuery();
                     }
                 }
@@ -253,7 +254,8 @@ namespace carCard.Controllers
                             c.CAR_FCA_ID,
                             c.CAR_SANDELIS,
                             c.CAR_TIKSLAS,
-                            c.CAR_TYPE
+                            c.CAR_TYPE,
+                            c.CAR_PADALINYS
                         FROM CARS c
                         WHERE c.CAR_CLI_ID = @CLI_ID
                     ";
@@ -329,7 +331,8 @@ namespace carCard.Controllers
                         CAR_FCA_ID = @CAR_FCA_ID,
                         CAR_SANDELIS = @CAR_SANDELIS,
                         CAR_TIKSLAS = @CAR_TIKSLAS,
-                        CAR_TYPE = @CAR_TYPE
+                        CAR_TYPE = @CAR_TYPE,
+                        CAR_PADALINYS = @CAR_PADALINYS
                     WHERE CAR_ID = @CarId";
                 using (var updateCommand = new SqlCommand(updateQuery, connection, transaction))
                 {
@@ -338,6 +341,8 @@ namespace carCard.Controllers
                     updateCommand.Parameters.AddWithValue("@CAR_TIKSLAS", car.CAR_TIKSLAS);
                     updateCommand.Parameters.AddWithValue("@CAR_TYPE",
                      car.CAR_TYPE.HasValue?(object)car.CAR_TYPE.Value : DBNull.Value);
+                     updateCommand.Parameters.AddWithValue("@CAR_PADALINYS",
+                     car.CAR_PADALINYS.HasValue?(object)car.CAR_PADALINYS.Value : DBNull.Value);
                     updateCommand.Parameters.AddWithValue("@CarId", car.CAR_ID);
                     updateCommand.Parameters.AddWithValue("@User", 
                         !car.CAR_USER.HasValue || car.CAR_USER.Value == Guid.Empty 
@@ -379,6 +384,7 @@ namespace carCard.Controllers
         public string sandelis { get; set; }
         public string tikslas { get; set; }
         public int CAR_TYPE { get; set; }
+        public int? CAR_PADALINYS { get; set; }
 
     }
     public class DeleteCarRequest
@@ -394,6 +400,7 @@ namespace carCard.Controllers
         public string CAR_SANDELIS { get; set; }
         public string CAR_TIKSLAS { get; set; }
         public int? CAR_TYPE { get; set; }
+        public int? CAR_PADALINYS { get; set; }
     }
     }
 }

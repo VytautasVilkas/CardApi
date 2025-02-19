@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("carCardApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+053abc0b7913a4f0b1e60876e4fe1d75018b9f5c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f109cf5b59e83095827e34527f7db0fa16242e27")]
 [assembly: System.Reflection.AssemblyProductAttribute("carCardApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("carCardApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

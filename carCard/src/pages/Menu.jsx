@@ -6,6 +6,7 @@ import AddCar from "../components/AddCar";
 import StartTrip from "../components/StartTrip";
 import AddUsers from "../components/AddUsers";
 import AddCompany from "../components/AddCompany";
+import Account from "../components/Account";
 import { useUser } from "../context/UserContext";
 import { getCliOptions } from "../services/UserService"; 
 
@@ -77,6 +78,8 @@ const Menu = () => {
         return <AddUsers />;
       case "one":
         return <AddCompany />;
+      case "eight":
+        return <Account />;
       default:
         return <div>Sveiki prisijungę</div>;
     }
@@ -161,6 +164,17 @@ const Menu = () => {
                   className="w-6 h-6 mr-2"
                 />
                 Įkelti Excel duomenis
+              </button>
+              <button
+                onClick={() => setActiveComponent("eight")}
+                className="hover:scale-105 w-full flex items-center justify-center rounded-md border border-gray-300 py-2 px-4 text-sm font-semibold text-gray-900 hover:bg-gray-100 focus:outline-none"
+              >
+                <img
+                  src="https://img.icons8.com/ios/100/ms-excel.png"
+                  alt="ms-excel"
+                  className="w-6 h-6 mr-2"
+                />
+                Ataskaita
               </button>
               <button
                 onClick={() => setActiveComponent("four")}

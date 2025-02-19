@@ -9,6 +9,7 @@ const AddCar = () => {
   const [initialOdo, setInitialOdo] = useState("");
   const [sandelis, setSandelis] = useState("");
   const [tikslas, setTikslas] = useState("");
+  const [padalinys, setPadalinys] = useState("");
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedCard, setSelectedCard] = useState("");
   const [selectedType, SetselectedType] = useState("");
@@ -73,7 +74,8 @@ const AddCar = () => {
       CAR_TYPE:selectedType.trim() ? parseInt(selectedType, 10) : null,     
       userId: selectedUser.trim() ? selectedUser : null,
       cardId: selectedCard.trim() ? parseInt(selectedCard, 10) : null,
-      CLI_ID: cliId
+      CLI_ID: cliId,
+      CAR_PADALINYS:padalinys.trim() ? parseInt(padalinys, 10) : null
     };
     try {
       const result = await addCar(formData);
@@ -81,6 +83,7 @@ const AddCar = () => {
       setInitialOdo("");
       setSelectedUser("");
       setSelectedCard("");
+      setPadalinys("");
       setSuccess("Automobilis sėkmingai pridėtas!");
       setrefreshCars((prev) => prev + 1);
     } catch (err) {
@@ -89,7 +92,6 @@ const AddCar = () => {
       setLoading(false);
     }
   };
-
   return (
     <div className="flex flex-col items-center justify-center px-4 py-8 min-h-screen">
       <div className="max-w-xs sm:max-w-lg md:max-w-2xl lg:max-w-4xl p-4 sm:p-6 border border-gray-300 rounded-lg bg-white shadow-md mb-8">
@@ -171,7 +173,20 @@ const AddCar = () => {
             className="w-full border border-gray-300 p-2 rounded"
           />
         </div>
-        
+        {/* Padalinys */}
+        <div className="mb-4">
+          <label htmlFor="padalinys" className="block mb-1 font-medium">
+            Padalinys (nebūtina)
+          </label>
+          <input
+            id="padalinys"
+            type="number"
+            value={padalinys}
+            onChange={(e) => setPadalinys(e.target.value)}
+            placeholder="Įveskite padalinį"
+            className="w-full border border-gray-300 p-2 rounded"
+          />
+        </div>
         {/* Optional User Dropdown */}
         <div className="mb-4">
           <label htmlFor="selectedUser" className="block mb-1 font-medium">
