@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "FWWpggtNU1RLwOg9rrsEFZgJCzwQZQGokN+Gefq/CFU=",
+  "Source": "carCardApi",
+  "BasePath": "_content/carCardApi",
+  "Mode": "Default",
+  "ManifestType": "Publish",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

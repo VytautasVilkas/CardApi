@@ -70,32 +70,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 //     options.KnownProxies.Add(IPAddress.Parse("::1"));
 // });
 
-// CORS policies
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("DefaultPolicy", policy =>
-    {
-        policy.WithOrigins("http://localhost:5173", "https://localhost:5173") 
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials(); 
-    });
-    
-});
 
-builder.Services.AddHttpsRedirection(options =>
-{
-    options.HttpsPort = 7279;
-});
+// builder.Services.AddCors(options =>
+// {
+//     options.AddPolicy("DefaultPolicy", policy =>
+//     {
+//         policy.WithOrigins("http://localhost:5173", "https://localhost:5173") 
+//               .AllowAnyMethod()
+//               .AllowAnyHeader()
+//               .AllowCredentials(); 
+//     });
+// });
 
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(7279, listenOptions =>
-    {
-        listenOptions.UseHttps(); 
-    });
-    options.ListenAnyIP(5130); 
-});
+// builder.Services.AddHttpsRedirection(options =>
+// {
+//     options.HttpsPort = 7279;
+// });
+
+// builder.WebHost.ConfigureKestrel(options =>
+// {
+//     options.ListenAnyIP(7279, listenOptions =>
+//     {
+//         listenOptions.UseHttps(); 
+//     });
+//     options.ListenAnyIP(5130); 
+// });
 
 
 
@@ -103,12 +102,12 @@ builder.WebHost.ConfigureKestrel(options =>
 
 
 var app = builder.Build();
-app.Use(async (context, next) =>
-{
-    context.Response.Headers.Add("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-    context.Response.Headers.Add("Cross-Origin-Embedder-Policy", "require-corp");
-    await next();
-});
+// app.Use(async (context, next) =>
+// {
+//     context.Response.Headers.Add("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+//     context.Response.Headers.Add("Cross-Origin-Embedder-Policy", "require-corp");
+//     await next();
+// });
 app.UseForwardedHeaders();
 app.UseCors("DefaultPolicy");
 app.UseHttpsRedirection(); 

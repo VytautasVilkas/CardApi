@@ -174,3 +174,4 @@ C:\Users\Vytautas\Desktop\CarCard\carCardApi\obj\Debug\net9.0\carCardApi.pdb
 C:\Users\Vytautas\Desktop\CarCard\carCardApi\obj\Debug\net9.0\carCardApi.genruntimeconfig.cache
 C:\Users\Vytautas\Desktop\CarCard\carCardApi\obj\Debug\net9.0\ref\carCardApi.dll
 C:\Users\Vytautas\Desktop\CarCard\carCardApi\obj\Debug\net9.0\carCardApi.sourcelink.json
+C:\Users\Vytautas\Desktop\CarCard\carCardApi\bin\Debug\net9.0\web.config

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using OfficeOpenXml;
+using OfficeOpenXml.Style;
 
 
 namespace carCard.Controllers
@@ -410,22 +411,106 @@ public class FileController : ControllerBase
 
             [HttpGet("GetExcelFile")]
             [Authorize]
-            public async Task<IActionResult> GetExcelFile()
+            public async Task<IActionResult> GetExcelFile(
+                [FromQuery] string CLI_ID, 
+                [FromQuery] string date, 
+                [FromQuery] int? kodas,
+                [FromQuery] int? formType
+            )
             {
-                // Your SQL query
-                var query = @"
+                
+                if (string.IsNullOrEmpty(date) || !DateTime.TryParse($"{date}-01", out DateTime startDate))
+                {
+                    return BadRequest("Blogas datos formatas");
+                }      
+                if(formType.HasValue){Console.WriteLine(""+formType.ToString);}
+                
+                string query = "";
+                if (formType.HasValue && formType == 1)
+                {
+                    query = @"
+                        SELECT
+                            FT.FUEL_PRK_KODAS         AS [Prekės Nr.],
+                            C.CAR_SANDELIS            AS [Sandėlis],
+                            SUM(U.FCU_QTY)            AS [Kiekis],
+                            SUM(U.FCU_TOTAL_AMOUNT)   AS [Grynoji suma],
+                            ''                        AS [vIšlaidųCentras],
+                            C.CAR_PADALINYS           AS [vPadalinys],
+                            T.TYPE_CODE               AS [vPirkėjas],
+                            C.CAR_TIKSLAS             AS [vTikslas]
+                        FROM CARDS_USAGE U
+                            LEFT JOIN FUEL_TYPE FT ON U.FCU_FUEL_TYPE = FT.FUEL_ID
+                            LEFT JOIN CARS C       ON U.FCU_FCA_ID = C.CAR_FCA_ID
+                            LEFT JOIN CAR_TYPE T   ON C.CAR_TYPE = T.TYPE_ID
+                            LEFT JOIN CARDS CD     ON U.FCU_FCA_ID = CD.FCA_ID
+                        WHERE CD.FCA_CLI_ID = @FCA_CLI_ID 
+                            AND U.FCU_DATE >= @startDate
+                            AND U.FCU_DATE < DATEADD(MONTH, 1, @startDate)
+                    ";
+                }
+                else if (formType.HasValue && formType == 2)
+                {
+                    query = @"
                     SELECT
-                        FT.FUEL_PRK_KODAS                      AS [Prekės Nr.],
-                        C.CAR_SANDELIS                         AS [Sandėlis],
-                        SUM(U.FCU_QTY)                         AS [Kiekis],
-                        SUM(U.FCU_TOTAL_AMOUNT)                AS [Grynoji suma],
-                        C.CAR_PADALINYS                        AS [vPadalinys],
-                        T.TYPE_CODE                            AS [vPirkėjas],
-                        C.CAR_TIKSLAS                          AS [vTikslas]
-                    FROM CARDS_USAGE U
-                        LEFT JOIN FUEL_TYPE FT ON U.FCU_FUEL_TYPE = FT.FUEL_ID
-                        LEFT JOIN CARS C       ON U.FCU_FCA_ID    = C.CAR_FCA_ID
-                        LEFT JOIN CAR_TYPE T ON C.CAR_TYPE = T.TYPE_ID
+                    FT.FUEL_PRK_KODAS                              AS [Prekės Nr.],
+                    C.CAR_SANDELIS                                 AS [Sandėlis],
+                    SUM(U.FCU_QTY)                                 AS [Kiekis],
+                    MAX(U.FCU_PRICE_PER_UNIT)                      AS [Vieneto kaina],  -- or AVG/ MIN as appropriate
+                    SUM(U.FCU_TOTAL_AMOUNT)                        AS [Grynoji suma-apmokestinama PVM],
+                    ''                                             AS [Grynoji suma-Neapmokestinama PVM],
+                    ''                                             AS [Prekės PVM grupė, kai Grynoji suma-apmokestinama PVM],
+                    ''                                             AS [Prekės PVM grupė, kai Grynoji suma-NEapmokestinama PVM],
+                    ''                                             AS [vIšlaidųCentras],
+                    C.CAR_PADALINYS                                AS [vPadalinys],
+                    ''                                             AS [vPirkėjas],
+                    C.CAR_TIKSLAS                                  AS [vTikslas]
+                FROM CARDS_USAGE U
+                    LEFT JOIN FUEL_TYPE FT ON U.FCU_FUEL_TYPE = FT.FUEL_ID
+                    LEFT JOIN CARS C       ON U.FCU_FCA_ID     = C.CAR_FCA_ID
+                    LEFT JOIN CAR_TYPE T   ON C.CAR_TYPE       = T.TYPE_ID
+                    LEFT JOIN CARDS CD     ON U.FCU_FCA_ID     = CD.FCA_ID
+                WHERE CD.FCA_CLI_ID = @FCA_CLI_ID 
+                    AND U.FCU_DATE >= @startDate
+                    AND U.FCU_DATE < DATEADD(MONTH, 1, @startDate)
+
+                    ";
+                }
+                else if (formType.HasValue && formType == 3)
+                {
+                    query = @"
+                        SELECT
+                                ''                                         AS [Account Number],
+                                SUM(U.FCU_TOTAL_AMOUNT)                    AS [Amount],             
+                                ''                                         AS [Explanation -Remark-],
+                                ''                                         AS [Co],
+                                'C'                                        AS [Sub Type],           
+                                '00' + COALESCE(C.CAR_PLATE_NUMBER, '')    AS [Sub-ledger],
+                                'AA'                                       AS [Ledger Type],        
+                                ''                                         AS [B C],
+                                ''                                         AS [P C],
+                                SUM(U.FCU_QTY)                             AS [Units],              
+                                'LT'                                       AS [UM],                 
+                                ''                                         AS [PO Doc Co],
+                                ''                                         AS [PO Doc Type],
+                                ''                                         AS [Purchase Order],
+                                ''                                         AS [Subledger Description]
+                            FROM CARDS_USAGE U
+                                LEFT JOIN CARS C       ON U.FCU_FCA_ID = C.CAR_FCA_ID
+                                LEFT JOIN FUEL_TYPE FT ON U.FCU_FUEL_TYPE = FT.FUEL_ID
+                                LEFT JOIN CAR_TYPE T   ON C.CAR_TYPE     = T.TYPE_ID
+                                LEFT JOIN CARDS CD     ON U.FCU_FCA_ID   = CD.FCA_ID
+                            WHERE CD.FCA_CLI_ID = @FCA_CLI_ID
+                            AND U.FCU_DATE >= @startDate
+                            AND U.FCU_DATE < DATEADD(MONTH, 1, @startDate)";
+
+
+                }
+                if (kodas.HasValue)
+                {
+                    query += " AND T.TYPE_ID = @kodas";
+                }
+                if (formType == 1 || formType == 2){
+                query += @"
                     GROUP BY
                         FT.FUEL_PRK_KODAS,
                         C.CAR_SANDELIS,
@@ -433,9 +518,20 @@ public class FileController : ControllerBase
                         T.TYPE_CODE,
                         C.CAR_TIKSLAS;
                 ";
+                }
+                else if (formType == 3)
+                {
+                       
+                query += @"  GROUP BY
+                    '00' + COALESCE(C.CAR_PLATE_NUMBER, '') 
 
+
+                ";
+
+
+                }
                 var dataTable = new DataTable();
-
+                SortedDictionary<string, string> dictionary = new SortedDictionary<string, string>();
                 try
                 {
                     using (var connection = _connectionProvider.GetConnection())
@@ -446,6 +542,12 @@ public class FileController : ControllerBase
                         }
                         using (var command = new SqlCommand(query, connection))
                         {
+                            command.Parameters.AddWithValue("@FCA_CLI_ID", CLI_ID);
+                            command.Parameters.AddWithValue("@startDate", startDate);
+                            if (kodas.HasValue)
+                            {
+                                command.Parameters.AddWithValue("@kodas", kodas.Value);
+                            }
                             using (var adapter = new SqlDataAdapter(command))
                             {
                                 adapter.Fill(dataTable);
@@ -456,31 +558,38 @@ public class FileController : ControllerBase
                 catch (Exception ex)
                 {
                     exceptionLogger.LogException(
-                    source: "GetExcelFile",
-                    message: ex.Message,
-                    stackTrace: ex.StackTrace
-                );
-                    Console.WriteLine(ex.Message);
+                        source: "GetExcelFile",
+                        message: ex.ToString(),
+                        stackTrace: ex.StackTrace
+                    );
                     return StatusCode(500, "Error executing SQL query: " + ex.Message);
                 }
-
-                // Set EPPlus license context before creating the package
+                
                 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
-                // Generate Excel file
                 try
                 {
-                    using (var package = new ExcelPackage())
+                   using (var package = new ExcelPackage())
                     {
-                        var worksheet = package.Workbook.Worksheets.Add("CAR_USAGE");
+                        string name = "";
+                        if (formType.HasValue && formType == 1)
+                        {
+                            name = "Nurašymui ";
+                        }
+                        else if (formType.HasValue && formType == 2)
+                        {
+                            name = "isigijimui ";
+                        }
+                        else if (formType.HasValue && formType == 3)
+                        {
+                            name = "Nurašymas ";
+                        }
 
-                        // Create header row from DataTable columns
+                        var worksheet = package.Workbook.Worksheets.Add(name + startDate.ToString("yyyy-MM"));
                         for (int col = 0; col < dataTable.Columns.Count; col++)
                         {
                             worksheet.Cells[1, col + 1].Value = dataTable.Columns[col].ColumnName;
                         }
-
-                        // Fill data rows from DataTable
+                        
                         for (int row = 0; row < dataTable.Rows.Count; row++)
                         {
                             for (int col = 0; col < dataTable.Columns.Count; col++)
@@ -488,28 +597,139 @@ public class FileController : ControllerBase
                                 worksheet.Cells[row + 2, col + 1].Value = dataTable.Rows[row][col];
                             }
                         }
+                        
+                        if (formType == 2)
+                        {
+                            worksheet.Row(1).Style.Font.Size = 8;
+                            worksheet.Cells[1, 1, 1, 12].Style.WrapText = true;
+                            worksheet.Row(1).Height = 50;
+                            worksheet.Row(1).CustomHeight = true;
+                            worksheet.Cells[1, 1, 1, 12].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                            worksheet.Cells[1, 1, 1, 12].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+                        }
+                        else if (formType == 3)
+                            {
 
-                        // Check that there is content before auto-fitting columns
+
+                                worksheet.Cells["A1"].Value = "DEBETAS";
+
+                                worksheet.Cells["A1:N1"].Merge = true;
+                                worksheet.Cells["A1:N1"].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                                worksheet.Cells["A1:N1"].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+                                worksheet.Row(1).Height = 20;
+                                worksheet.Row(1).CustomHeight = true;
+
+                                var debetasHeaders = new string[]
+                                {
+                                    "Account Number",
+                                    "Amount",
+                                    "Explanation -Remark-",
+                                    "Co",
+                                    "Sub Type",
+                                    "Sub-ledger",
+                                    "Ledger Type",
+                                    "B C",
+                                    "P C",
+                                    "Units",
+                                    "UM",
+                                    "PO Doc Co",
+                                    "PO Doc Type",
+                                    "Purchase Order",
+                                    "Subledger Description"
+                                };
+
+                                for (int i = 0; i < debetasHeaders.Length; i++)
+                                {
+                                    worksheet.Cells[2, i + 1].Value = debetasHeaders[i];
+                                }
+                                worksheet.Cells[2, 1, 2, debetasHeaders.Length].Style.Font.Size = 8;
+                                worksheet.Cells[2, 1, 2, debetasHeaders.Length].Style.WrapText = true;
+                                worksheet.Cells[2, 1, 2, debetasHeaders.Length].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                                worksheet.Cells[2, 1, 2, debetasHeaders.Length].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+
+                               
+                                int currentRow = 3;
+
+                                for (int r = 0; r < dataTable.Rows.Count; r++)
+                                {
+                                    
+                                    for (int c = 0; c < dataTable.Columns.Count; c++)
+                                    {
+                                        worksheet.Cells[currentRow, c + 1].Value = dataTable.Rows[r][c];
+                                    }
+                                    
+                                    worksheet.Cells[currentRow, 1].Value = " LT1220.62800.200"; 
+
+                                    currentRow++;
+                                }
+                                
+
+                                currentRow++;
+
+                                worksheet.Cells[currentRow, 1].Value = "KREDITAS";
+                                worksheet.Cells[currentRow, 1, currentRow, debetasHeaders.Length].Merge = true;
+                                worksheet.Cells[currentRow, 1, currentRow, debetasHeaders.Length].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                                worksheet.Cells[currentRow, 1, currentRow, debetasHeaders.Length].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+                                worksheet.Row(currentRow).Height = 20;
+                                worksheet.Row(currentRow).CustomHeight = true;
+                                currentRow++;
+
+                                for (int i = 0; i < debetasHeaders.Length; i++)
+                                {
+                                    worksheet.Cells[currentRow, i + 1].Value = debetasHeaders[i];
+                                }
+                                worksheet.Cells[currentRow, 1, currentRow, debetasHeaders.Length].Style.Font.Size = 8;
+                                worksheet.Cells[currentRow, 1, currentRow, debetasHeaders.Length].Style.WrapText = true;
+                                worksheet.Cells[currentRow, 1, currentRow, debetasHeaders.Length].Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Center;
+                                worksheet.Cells[currentRow, 1, currentRow, debetasHeaders.Length].Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+                                currentRow++;
+
+
+                                currentRow += 2; 
+
+                                for (int r = 0; r < dataTable.Rows.Count; r++)
+                                {
+                                    for (int c = 0; c < dataTable.Columns.Count; c++)
+                                    {
+                                        worksheet.Cells[currentRow, c + 1].Value = dataTable.Rows[r][c];
+                                    }
+
+                                    worksheet.Cells[currentRow, 1].Value = "LTBS.31000.210";
+
+
+                                    currentRow++;
+                                }
+
+                            }
+
                         if (worksheet.Dimension != null)
                         {
                             worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
                         }
 
                         var excelBytes = package.GetAsByteArray();
-
                         return File(
                             excelBytes,
                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             "CarUsage.xlsx"
                         );
                     }
+
                 }
                 catch (Exception ex)
                 {
-                    // Log the error as needed
+                     exceptionLogger.LogException(
+                        source: "GetExcelFile",
+                        message: ex.ToString(),
+                        stackTrace: ex.StackTrace
+                    );
                     return StatusCode(500, "Error generating Excel file: " + ex.Message);
                 }
             }
+
+
+
+
 
     
 
